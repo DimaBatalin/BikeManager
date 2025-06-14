@@ -6,6 +6,8 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.memory import MemoryStorage
 
+from middlewares.access_control import AccessControlMiddleware
+
 import config
 
 # Уровень логирования
@@ -23,6 +25,9 @@ storage = MemoryStorage()
 
 # Создаём Dispatcher и привязываем к нему storage
 dp = Dispatcher(storage=storage)
+
+dp.message.middleware(AccessControlMiddleware())
+dp.callback_query.middleware(AccessControlMiddleware())
 
 # Подключаем все роутеры (handlers)
 from handlers.start_menu import router as start_menu_router

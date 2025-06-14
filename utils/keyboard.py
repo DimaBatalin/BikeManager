@@ -27,7 +27,7 @@ def main_reply_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 
-def active_repairs_inline(active_list: list) -> InlineKeyboardMarkup:
+def active_repairs_inline(active_list: list = []) -> InlineKeyboardMarkup:
     """
     Inline-клавиатура: по одному ряду на каждый активный ремонт (текст = ФИО, data = "show_{id}"),
     + внизу кнопка "➕ Создать новый ремонт".
@@ -36,10 +36,9 @@ def active_repairs_inline(active_list: list) -> InlineKeyboardMarkup:
     for r in active_list:
         fio = format_name(r.get("FIO", "Без имени"))
         rid = r.get("id")
-        # Убедитесь, что rid всегда не None
         if rid is not None:
             keyboard.append(
-                [InlineKeyboardButton(text=fio, callback_data=f"show_report:{rid}")]
+                [InlineKeyboardButton(text=fio, callback_data=f"show_active_repair_details:{rid}")]
             )
 
     keyboard.append(
@@ -71,36 +70,32 @@ def detail_repair_inline(repair_id: str | int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-def e_bike_problems_inline(selected_problems: list = None) -> InlineKeyboardMarkup:
+def e_bike_problems_inline(selected_problems: list = []) -> InlineKeyboardMarkup:
     """
-    Список типичных поломок для электровелосипеда, каждая — callback_data="prob:{название}",
-    включает галочки для выбранных проблем.
-    Внизу кнопка "Готово" (data="finish_breakdowns_selection").
+    Инлайн-клавиатура для выбора поломок электровелосипеда,
+    добавлена кнопка "Ввести свои поломки".
     """
-    if selected_problems is None:
-        selected_problems = []
-
-    problems = storage._load(ELECTRIC_BIKE_BREAKDOWNS_PATH)
-
-    keyboard = []
-    for p in problems:
-        emoji = "✅ " if p in selected_problems else "⬜ "
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    text=f"{emoji}{p}", callback_data=f"add_e_bike_problem:{p}"
-                )
-            ]
-        )
-
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                text="➡️ Завершить выбор", callback_data="finish_breakdowns_selection"
-            )
-        ]
-    )
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    # Этот список проблем должен быть полным
+    problems = [
+        "Не включается",
+        "Быстро разряжается",
+        "Не работает мотор",
+        "Проблемы с зарядкой",
+        "Не работают фары/фонари",
+        "Другое"
+    ]
+    
+    buttons = []
+    for problem in problems:
+        is_selected = problem in selected_problems
+        button_text = f"{'✅' if is_selected else '⬜'} {problem}"
+        callback_data = f"add_e_bike_problem:{problem}"
+        buttons.append([InlineKeyboardButton(text=button_text, callback_data=callback_data)])
+    
+    buttons.append([InlineKeyboardButton(text="✍️ Ввести свои поломки", callback_data="input_custom_breakdowns")])
+    buttons.append([InlineKeyboardButton(text="✅ Завершить выбор", callback_data="finish_breakdowns_selection")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def report_options_inline() -> InlineKeyboardMarkup:
@@ -229,6 +224,21 @@ def report_options_inline_kb() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="За неделю", callback_data="report_type:week"),
             InlineKeyboardButton(text="За месяц", callback_data="report_type:month"),
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def confirm_total_cost_kb(suggested_cost: int) -> InlineKeyboardMarkup:
+    """
+    Клавиатура для подтверждения предложенной суммы.
+    """
+    buttons = [
+        [
+            InlineKeyboardButton(text=f"✅ Принять {suggested_cost} руб.", callback_data=f"confirm_cost:{suggested_cost}"),
+        ],
+        [
+            InlineKeyboardButton(text="✍️ Ввести другую сумму", callback_data="enter_custom_cost")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

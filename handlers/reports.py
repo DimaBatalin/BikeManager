@@ -1,7 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command
-
+from aiogram.fsm.context import FSMContext
 import services.storage as storage
 from utils.keyboard import main_reply_kb, report_options_inline_kb
 
@@ -13,11 +12,11 @@ def register_handlers(dp):
 
 
 @router.message(F.text == "Отчёты")
-@router.message(Command("reports"))
-async def show_report_options(message: Message):
+async def show_report_options(message: Message, state: FSMContext):
     """
     Показывает пользователю опции для выбора типа отчёта.
     """
+    await state.set_state(state=None)
     await message.answer(
         "📊 Выберите, за какой период вы хотите получить отчёт:",
         reply_markup=report_options_inline_kb(),

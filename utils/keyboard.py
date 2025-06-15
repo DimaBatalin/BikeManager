@@ -38,7 +38,11 @@ def active_repairs_inline(active_list: list = []) -> InlineKeyboardMarkup:
         rid = r.get("id")
         if rid is not None:
             keyboard.append(
-                [InlineKeyboardButton(text=fio, callback_data=f"show_active_repair_details:{rid}")]
+                [
+                    InlineKeyboardButton(
+                        text=fio, callback_data=f"show_active_repair_details:{rid}"
+                    )
+                ]
             )
 
     keyboard.append(
@@ -76,25 +80,32 @@ def e_bike_problems_inline(selected_problems: list = []) -> InlineKeyboardMarkup
     добавлена кнопка "Ввести свои поломки".
     """
     # Этот список проблем должен быть полным
-    problems = [
-        "Не включается",
-        "Быстро разряжается",
-        "Не работает мотор",
-        "Проблемы с зарядкой",
-        "Не работают фары/фонари",
-        "Другое"
-    ]
-    
+    problems = storage._load(ELECTRIC_BIKE_BREAKDOWNS_PATH)
+
     buttons = []
     for problem in problems:
         is_selected = problem in selected_problems
         button_text = f"{'✅' if is_selected else '⬜'} {problem}"
         callback_data = f"add_e_bike_problem:{problem}"
-        buttons.append([InlineKeyboardButton(text=button_text, callback_data=callback_data)])
-    
-    buttons.append([InlineKeyboardButton(text="✍️ Ввести свои поломки", callback_data="input_custom_breakdowns")])
-    buttons.append([InlineKeyboardButton(text="✅ Завершить выбор", callback_data="finish_breakdowns_selection")])
-    
+        buttons.append(
+            [InlineKeyboardButton(text=button_text, callback_data=callback_data)]
+        )
+
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                text="✍️ Ввести свои поломки", callback_data="input_custom_breakdowns"
+            )
+        ]
+    )
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                text="✅ Завершить выбор", callback_data="finish_breakdowns_selection"
+            )
+        ]
+    )
+
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
@@ -235,10 +246,15 @@ def confirm_total_cost_kb(suggested_cost: int) -> InlineKeyboardMarkup:
     """
     buttons = [
         [
-            InlineKeyboardButton(text=f"✅ Принять {suggested_cost} руб.", callback_data=f"confirm_cost:{suggested_cost}"),
+            InlineKeyboardButton(
+                text=f"✅ Принять {suggested_cost} руб.",
+                callback_data=f"confirm_cost:{suggested_cost}",
+            ),
         ],
         [
-            InlineKeyboardButton(text="✍️ Ввести другую сумму", callback_data="enter_custom_cost")
-        ]
+            InlineKeyboardButton(
+                text="✍️ Ввести другую сумму", callback_data="enter_custom_cost"
+            )
+        ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

@@ -29,27 +29,6 @@ def register_handlers(dp):
     dp.include_router(router)
 
 
-def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
-    breakdowns_list = []
-    total_cost = 0
-    parts = [part.strip() for part in text.split(",")]
-    for part in parts:
-        # Проверяем, соответствует ли часть формату "Текст NNN"
-        match = re.search(r"^(.*?)\s+(\d+)$", part)
-        if match:
-            breakdown_text = match.group(1).strip()
-            cost = int(match.group(2))
-            breakdowns_list.append(
-                f"{breakdown_text} {cost}"
-            )  # Сохраняем как исходную строку
-            total_cost += cost
-        else:
-            # Если формат не соответствует, сохраняем как есть, стоимость 0
-            breakdowns_list.append(part)
-            # total_cost += 0 # Можно явно не добавлять 0
-    return breakdowns_list, total_cost
-
-
 # --- FSM States --- (без изменений)
 class RepairForm(StatesGroup):
     fio = State()
@@ -78,7 +57,6 @@ class EditRepairForm(StatesGroup):
     is_mechanics = State()
 
 
-# --- Вспомогательная функция для парсинга поломок (без изменений) ---
 def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
     breakdowns_list = []
     total_cost = 0
@@ -87,15 +65,14 @@ def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
         match = re.search(r"\s+(\d+)$", part)
         if match:
             cost = int(match.group(1))
-            breakdown_text = part[: match.start()].strip()
-            breakdowns_list.append(breakdown_text)
+            # breakdown_text = part[: match.start()].strip()
+            breakdowns_list.append(part)
             total_cost += cost
         else:
             breakdowns_list.append(part)
     return breakdowns_list, total_cost
 
 
-# --- ОБНОВЛЕННЫЙ ХЕНДЛЕР show_active_repairs_list ---
 @router.message(F.text == "Действующие ремонты")
 @router.message(Command("active_repairs"))
 async def show_active_repairs_list(message: Message):
@@ -118,7 +95,7 @@ async def show_active_repairs_list(message: Message):
 @router.callback_query(F.data.startswith("show_active_repair_details:"))
 async def show_specific_active_repair_details(callback: CallbackQuery):
     repair_id = int(callback.data.split(":")[1])
-    repair_data = storage.get_active_repair_data_by_id(repair_id)
+    repair_data = storage.get_active_repair_data_by_id(int(repair_id))
 
     if repair_data:
         await callback.message.edit_text(  # Используем edit_text, чтобы заменить сообщение со списком
@@ -265,7 +242,7 @@ async def process_breakdowns_input(message: Message, state: FSMContext):
             repair_id, "cost", calculated_cost
         )  # Обновляем и общую стоимость
 
-        repair = storage.get_active_repair_data_by_id(repair_id)
+        repair = storage.get_active_repair_data_by_id(int(repair_id))
         if repair:
             await message.answer(
                 f"✅ Поломки и стоимость обновлены для ремонта ID: {repair_id}.\n\n"
@@ -410,7 +387,7 @@ async def process_cost_input(message: Message, state: FSMContext):
             return
 
         storage.update_repair_field(repair_id, "cost", cost)
-        repair = storage.get_active_repair_data_by_id(repair_id)
+        repair = storage.get_active_repair_data_by_id(int(repair_id))
         if repair:
             await message.answer(
                 f"✅ Стоимость обновлена для ремонта ID: {repair_id}.\n\n"
@@ -451,7 +428,7 @@ async def confirm_cost(callback: CallbackQuery, state: FSMContext):
             return
 
         storage.update_repair_field(repair_id, "cost", suggested_cost)
-        repair = storage.get_active_repair_data_by_id(repair_id)
+        repair = storage.get_active_repair_data_by_id(int(repair_id))
         if repair:
             await callback.message.edit_text(
                 f"✅ Стоимость обновлена для ремонта ID: {repair_id}.\n\n"
@@ -504,7 +481,7 @@ async def finalize_repair_creation(message: Message, state: FSMContext):
 
     await message.answer(
         f"✅ Ремонт успешно добавлен!\n\n" + format_repair_details(user_data),
-        reply_markup=main_reply_kb(),
+        reply_markup=detail_repair_inline(new_repair_id),
     )
     await state.clear()
 
@@ -512,7 +489,7 @@ async def finalize_repair_creation(message: Message, state: FSMContext):
 @router.callback_query(F.data.startswith("edit_repair:"))
 async def edit_repair(callback: CallbackQuery, state: FSMContext):
     repair_id = int(callback.data.split(":")[1])
-    repair_data = storage.get_active_repair_data_by_id(repair_id)
+    repair_data = storage.get_active_repair_data_by_id(int(repair_id))
     if not repair_data:
         await callback.message.answer("Ремонт не найден.")
         await callback.answer()
@@ -634,7 +611,7 @@ async def edit_e_bike_problem_select(callback: CallbackQuery, state: FSMContext)
         await callback.answer()
         return
 
-    current_repair_data = storage.get_active_repair_data_by_id(repair_id)
+    current_repair_data = storage.get_active_repair_data_by_id(int(repair_id))
     if not current_repair_data:
         await callback.message.answer("Ремонт не найден.", reply_markup=main_reply_kb())
         await state.clear()
@@ -669,7 +646,7 @@ async def edit_e_bike_input_custom_breakdowns(
     await state.set_state(EditRepairForm.e_bike_breakdowns_edit_custom)
     user_data = await state.get_data()
     repair_id = user_data.get("current_edit_repair_id")
-    current_repair_data = storage.get_active_repair_data_by_id(repair_id)
+    current_repair_data = storage.get_active_repair_data_by_id(int(repair_id))
     current_breakdowns_str = ", ".join(current_repair_data.get("breakdowns", []))
 
     await callback.message.edit_text(
@@ -695,7 +672,7 @@ async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMCont
         await state.clear()
         return
 
-    current_repair_data = storage.get_active_repair_data_by_id(repair_id)
+    current_repair_data = storage.get_active_repair_data_by_id(int(repair_id))
     if not current_repair_data:
         await message.answer("Ремонт не найден.", reply_markup=main_reply_kb())
         await state.clear()
@@ -726,7 +703,7 @@ async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMCont
 
     storage.update_repair_field(repair_id, "cost", total_cost_from_breakdowns)
 
-    repair = storage.get_active_repair_data_by_id(repair_id)
+    repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Поломки и стоимость обновлены для ремонта ID: {repair_id}.\n\n"
         + format_repair_details(repair),
@@ -752,7 +729,7 @@ async def finish_edit_e_bike_selection(callback: CallbackQuery, state: FSMContex
         await callback.answer()
         return
 
-    repair = storage.get_active_repair_data_by_id(repair_id)
+    repair = storage.get_active_repair_data_by_id(int(repair_id))
     if not repair:
         await callback.message.answer("Ремонт не найден.", reply_markup=main_reply_kb())
         await state.clear()
@@ -789,7 +766,7 @@ async def update_fio(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "FIO", message.text)
-    repair = storage.get_active_repair_data_by_id(repair_id)
+    repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ ФИО обновлено для ремонта ID: {repair_id}.\n\n"
         + format_repair_details(repair),
@@ -810,7 +787,7 @@ async def update_contact(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "contact", message.text)
-    repair = storage.get_active_repair_data_by_id(repair_id)
+    repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Контакт обновлен для ремонта ID: {repair_id}.\n\n"
         + format_repair_details(repair),
@@ -851,7 +828,7 @@ async def update_bike_type(callback: CallbackQuery, state: FSMContext):
             repair_id, "namebike", "Электровелосипед"
         )  # Автоматически установить имя
 
-    repair = storage.get_active_repair_data_by_id(repair_id)
+    repair = storage.get_active_repair_data_by_id(int(repair_id))
     await callback.message.edit_text(
         f"✅ Тип велосипеда обновлен для ремонта ID: {repair_id}.\n\n"
         + format_repair_details(repair),
@@ -873,7 +850,7 @@ async def update_namebike(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "namebike", message.text)
-    repair = storage.get_active_repair_data_by_id(repair_id)
+    repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Название велосипеда обновлено для ремонта ID: {repair_id}.\n\n"
         + format_repair_details(repair),
@@ -894,7 +871,7 @@ async def update_notes(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "notes", message.text)
-    repair = storage.get_active_repair_data_by_id(repair_id)
+    repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Примечания обновлены для ремонта ID: {repair_id}.\n\n"
         + format_repair_details(repair),
@@ -923,7 +900,7 @@ async def update_date(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "date", message.text)
-    repair = storage.get_active_repair_data_by_id(repair_id)
+    repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Дата обновлена для ремонта ID: {repair_id}.\n\n"
         + format_repair_details(repair),
@@ -936,7 +913,7 @@ async def update_date(message: Message, state: FSMContext):
 async def cancel_edit(callback: CallbackQuery, state: FSMContext):
     repair_id = int(callback.data.split(":")[1])
     await state.clear()
-    repair_data = storage.get_active_repair_data_by_id(repair_id)
+    repair_data = storage.get_active_repair_data_by_id(int(repair_id))
     if repair_data:
         await callback.message.edit_text(
             f"Редактирование отменено.\n\n" + format_repair_details(repair_data),

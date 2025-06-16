@@ -31,12 +31,16 @@ dp.callback_query.middleware(AccessControlMiddleware())
 
 # Подключаем все роутеры (handlers)
 from handlers.start_menu import router as start_menu_router
-from handlers.active_repairs import router as active_repairs_router
+from handlers.edit_repairs import router as edit_repairs_router
+from handlers.create_new_repair import router as create_new_repair_router
+from handlers.show_active_repairs import router as show_active_repairs_router
 from handlers.archive import router as archive_router
 from handlers.reports import router as reports_router
 
 dp.include_router(start_menu_router)
-dp.include_router(active_repairs_router)
+dp.include_router(edit_repairs_router)
+dp.include_router(create_new_repair_router)
+dp.include_router(show_active_repairs_router)
 dp.include_router(archive_router)
 dp.include_router(reports_router)
 

@@ -1,12 +1,9 @@
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.types import Message
 from aiogram.filters import Command
 
 from aiogram.fsm.context import FSMContext
 from utils.keyboard import main_reply_kb
-from handlers.active_repairs import show_active_repairs_list
-from handlers.archive import show_archive_recent
-from handlers.reports import show_report_options
 
 router = Router()
 

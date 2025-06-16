@@ -1,4 +1,20 @@
 from typing import Dict, Any
+from re import search
+
+def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
+    breakdowns_list = []
+    total_cost = 0
+    parts = [part.strip() for part in text.split(",")]
+    for part in parts:
+        match = search(r"\s+(\d+)$", part)
+        if match:
+            cost = int(match.group(1))
+            breakdowns_list.append(part)
+            total_cost += cost
+        else:
+            breakdowns_list.append(part)
+    return breakdowns_list, total_cost
+
 
 def format_repair_details(repair: Dict[str, Any]) -> str:
     """
@@ -31,6 +47,7 @@ def format_repair_details(repair: Dict[str, Any]) -> str:
         f"📝 <b>Примечания:</b> <i>{notes}</i>\n"
     )
     return message_text
+
 
 def format_archived_repair_details(repair: Dict[str, Any]) -> str:
     """
@@ -65,7 +82,6 @@ def format_archived_repair_details(repair: Dict[str, Any]) -> str:
         f"📝 <b>Примечания:</b> <i>{notes}</i>\n"
     )
     return message_text
-
 
 
 def format_name(full_name: str) -> str:

@@ -1,8 +1,6 @@
-from aiogram import Router, F, types
+from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 
 import services.storage as storage
 from utils.keyboard import (
@@ -10,16 +8,13 @@ from utils.keyboard import (
     detail_repair_inline,
     edit_repair_options_inline,
     e_bike_problems_inline,
-    select_bike_type_inline,
     edit_bike_type_inline,
-    skip_notes_inline_kb,
     confirm_total_cost_kb,
-    active_repairs_inline,
 )
-from utils.formatter import format_repair_details
-from fsm_states import RepairForm, EditRepairForm
+from utils.formatter import format_repair_details, parse_breakdowns_with_cost
+from fsm_states import EditRepairForm
 
-import re
+from re import search
 from datetime import datetime
 
 router = Router()
@@ -27,22 +22,6 @@ router = Router()
 
 def register_handlers(dp):
     dp.include_router(router)
-
-
-def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
-    breakdowns_list = []
-    total_cost = 0
-    parts = [part.strip() for part in text.split(",")]
-    for part in parts:
-        match = re.search(r"\s+(\d+)$", part)
-        if match:
-            cost = int(match.group(1))
-            # breakdown_text = part[: match.start()].strip()
-            breakdowns_list.append(part)
-            total_cost += cost
-        else:
-            breakdowns_list.append(part)
-    return breakdowns_list, total_cost
 
 
 @router.callback_query(F.data.startswith("edit_repair:"))
@@ -120,7 +99,7 @@ async def select_field_to_edit(callback: CallbackQuery, state: FSMContext):
 
             # --- ИЗМЕНЕНИЕ 2: Фильтруем для клавиатуры только стандартные поломки ---
             standard_breakdowns = [
-                b for b in current_breakdowns if not re.search(r"\s+\d+$", b)
+                b for b in current_breakdowns if not search(r"\s+\d+$", b)
             ]
             
             await callback.message.edit_text(
@@ -170,7 +149,7 @@ async def edit_e_bike_problem_select(callback: CallbackQuery, state: FSMContext)
     await state.update_data(temp_breakdowns=temp_breakdowns)
     
     # Обновляем клавиатуру, показывая текущие выбранные (стандартные) поломки
-    standard_breakdowns = [b for b in temp_breakdowns if not re.search(r"\s+\d+$", b)]
+    standard_breakdowns = [b for b in temp_breakdowns if not search(r"\s+\d+$", b)]
     await callback.message.edit_reply_markup(
         reply_markup=e_bike_problems_inline(standard_breakdowns)
     )
@@ -213,7 +192,7 @@ async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMCont
 
     # 1. Берем стандартные поломки (без цены) из временного списка
     standard_selections = [
-        b for b in temp_breakdowns if not re.search(r"\s+\d+$", b)
+        b for b in temp_breakdowns if not search(r"\s+\d+$", b)
     ]
     
     # 2. Парсим новые кастомные поломки
@@ -230,7 +209,7 @@ async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMCont
     # 5. Пересчитываем общую стоимость и предлагаем ее подтвердить
     total_cost_from_breakdowns = 0
     for bd in final_breakdowns:
-        match = re.search(r"\s+(\d+)$", bd)
+        match = search(r"\s+(\d+)$", bd)
         if match:
             total_cost_from_breakdowns += int(match.group(1))
 
@@ -265,7 +244,7 @@ async def finish_edit_e_bike_selection(callback: CallbackQuery, state: FSMContex
     # Пересчитываем общую стоимость
     total_cost_from_breakdowns = 0
     for bd in final_breakdowns:
-        match = re.search(r"\s+(\d+)$", bd)
+        match = search(r"\s+(\d+)$", bd)
         if match:
             total_cost_from_breakdowns += int(match.group(1))
             

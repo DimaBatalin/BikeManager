@@ -11,9 +11,11 @@ from .keyboard import (
 )
 from .formatter import (
     format_repair_details,
-    format_name
+    format_name,
+    parse_breakdowns_with_cost
 )
 __all__ = [
+    "parse_breakdowns_with_cost",
     "main_reply_kb",
     "active_repairs_inline",
     "detail_repair_inline",

@@ -1,25 +1,18 @@
-# create_new_repair.py
-
-# ... (импорты и другие функции файла без изменений) ...
 from aiogram import Router, F, types
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 
 import services.storage as storage
 from utils.keyboard import (
     main_reply_kb,
     detail_repair_inline,
-    edit_repair_options_inline,
     e_bike_problems_inline,
     select_bike_type_inline,
-    edit_bike_type_inline,
     skip_notes_inline_kb,
     confirm_total_cost_kb,
-    active_repairs_inline,
 )
-from utils.formatter import format_repair_details
+from utils.formatter import format_repair_details, parse_breakdowns_with_cost
 from fsm_states import RepairForm, EditRepairForm
 
 import re

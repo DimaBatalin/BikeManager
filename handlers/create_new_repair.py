@@ -1,3 +1,6 @@
+# create_new_repair.py
+
+# ... (импорты и другие функции файла без изменений) ...
 from aiogram import Router, F, types
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
@@ -44,7 +47,7 @@ def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
             breakdowns_list.append(part)
     return breakdowns_list, total_cost
 
-
+# ... (обработчики start_add_repair, process_fio, process_contact, etc. остаются без изменений) ...
 @router.message(F.text == "Добавить ремонт")
 @router.message(Command("add_repair"))
 @router.callback_query(
@@ -136,58 +139,52 @@ async def process_namebike(message: Message, state: FSMContext):
             reply_markup=e_bike_problems_inline([]),
         )
 
-
 @router.message(RepairForm.breakdowns)
 @router.message(EditRepairForm.breakdowns)
 async def process_breakdowns_input(message: Message, state: FSMContext):
+    # --- ИЗМЕНЕНИЕ 6: Разделяем логику для создания и редактирования ---
     text = message.text
     parsed_breakdowns, calculated_cost = parse_breakdowns_with_cost(text)
 
     current_state = await state.get_state()
-    user_data = await state.get_data()
-
+    
+    # Логика для СОЗДАНИЯ нового ремонта (остается без изменений)
     if current_state == RepairForm.breakdowns.state:
         await state.update_data(
             breakdowns=parsed_breakdowns, calculated_cost=calculated_cost
         )
         await state.set_state(RepairForm.cost)
+        await message.answer(
+            f"Предполагаемая стоимость ремонта по поломкам: <b>{calculated_cost} руб.</b>\n"
+            "Введите итоговую стоимость или нажмите 'Принять', чтобы использовать предложенную сумму.",
+            reply_markup=confirm_total_cost_kb(calculated_cost),
+        )
+        return # Важно выйти, чтобы не выполнился остальной код
+
+    # Логика для РЕДАКТИРОВАНИЯ существующего ремонта
     elif current_state == EditRepairForm.breakdowns.state:
+        user_data = await state.get_data()
         repair_id = user_data.get("repair_id_to_edit")
         if repair_id is None:
-            await message.answer(
-                "Ошибка: ID ремонта для редактирования не найден.",
-                reply_markup=main_reply_kb(),
-            )
+            await message.answer("Ошибка: ID ремонта для редактирования не найден.", reply_markup=main_reply_kb())
             await state.clear()
             return
-
+        
+        # 1. Обновляем только поломки
         storage.update_repair_field(repair_id, "breakdowns", parsed_breakdowns)
-        storage.update_repair_field(
-            repair_id, "cost", calculated_cost
-        )  # Обновляем и общую стоимость
+        
+        # 2. Сохраняем рассчитанную стоимость в FSM и переходим к шагу подтверждения
+        await state.update_data(calculated_cost=calculated_cost)
+        await state.set_state(EditRepairForm.cost)
 
-        repair = storage.get_active_repair_data_by_id(int(repair_id))
-        if repair:
-            await message.answer(
-                f"✅ Поломки и стоимость обновлены для ремонта ID: {repair_id}.\n\n"
-                + format_repair_details(repair),
-                reply_markup=detail_repair_inline(repair_id),
-            )
-        else:
-            await message.answer(
-                "✅ Поломки и стоимость обновлены.", reply_markup=main_reply_kb()
-            )
-
-        await state.clear()
+        await message.answer(
+            f"Поломки обновлены. Предполагаемая стоимость: <b>{calculated_cost} руб.</b>\n"
+            "Введите итоговую стоимость или нажмите 'Принять'.",
+            reply_markup=confirm_total_cost_kb(calculated_cost),
+        )
         return
 
-    await message.answer(
-        f"Предполагаемая стоимость ремонта по поломкам: <b>{calculated_cost} руб.</b>\n"
-        "Введите итоговую стоимость или нажмите 'Принять', чтобы использовать предложенную сумму.",
-        reply_markup=confirm_total_cost_kb(calculated_cost),
-    )
-
-
+# ... (весь оставшийся код файла create_new_repair.py без изменений) ...
 @router.callback_query(
     F.data.startswith("add_e_bike_problem:"), RepairForm.e_bike_breakdowns_select
 )

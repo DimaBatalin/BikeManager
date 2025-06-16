@@ -78,12 +78,12 @@ async def select_field_to_edit(callback: CallbackQuery, state: FSMContext):
     if field_name == "FIO":
         await state.set_state(EditRepairForm.fio)
         await callback.message.edit_text(
-            f"Введите новое ФИО клиента (текущее: {current_repair_data.get('FIO')}):"
+            f"Введите новое ФИО клиента (текущее: <code>{current_repair_data.get('FIO')}</code>):"
         )
     elif field_name == "contact":
         await state.set_state(EditRepairForm.contact)
         await callback.message.edit_text(
-            f"Введите новый контакт (текущий: {current_repair_data.get('contact')}):"
+            f"Введите новый контакт (текущий: <code>{current_repair_data.get('contact')}</code>):"
         )
     elif field_name == "isMechanics":
         await state.set_state(EditRepairForm.is_mechanics)
@@ -94,13 +94,10 @@ async def select_field_to_edit(callback: CallbackQuery, state: FSMContext):
     elif field_name == "namebike":
         await state.set_state(EditRepairForm.namebike)
         await callback.message.edit_text(
-            f"Введите новое название велосипеда (текущее: {current_repair_data.get('namebike', '-') }):"
+            f"Введите новое название велосипеда (текущее: <code>{current_repair_data.get('namebike', '-') }</code>):"
         )
     elif field_name == "breakdowns":
-        # Проверяем тип велосипеда для текущего ремонта
-        is_mechanics = current_repair_data.get(
-            "isMechanics", True
-        )  # По умолчанию механический, если не указано
+        is_mechanics = current_repair_data.get("isMechanics", True)
         if is_mechanics:
             await state.set_state(EditRepairForm.breakdowns)
             current_breakdowns_str = ", ".join(
@@ -109,42 +106,45 @@ async def select_field_to_edit(callback: CallbackQuery, state: FSMContext):
             await callback.message.edit_text(
                 f"Введите новые поломки (можно несколько через запятую) и их стоимость через пробел "
                 f"(например: 'Порвана цепь 500, Прокол колеса 200').\n"
-                f"Текущие поломки: {current_breakdowns_str if current_breakdowns_str else '-'}:"
+                f"Текущие поломки: <code>{current_breakdowns_str if current_breakdowns_str else '-'}</code>:"
             )
         else:  # Если электровелосипед
             await state.set_state(EditRepairForm.e_bike_breakdowns_edit_select)
-            # Фильтруем поломки, чтобы показать только те, которые без цены (стандартные)
-            # или те, которые были введены без цены изначально
-            current_breakdowns_no_cost = [
-                b
-                for b in current_repair_data.get("breakdowns", [])
-                if not re.search(r"\s+\d+$", b)  # Исключаем те, что имеют цену в конце
-            ]
+            
+            # --- ИЗМЕНЕНИЕ 1: Сохраняем текущие поломки во временное состояние FSM ---
+            current_breakdowns = current_repair_data.get("breakdowns", [])
             await state.update_data(
-                current_edit_repair_id=repair_id
-            )  # Сохраняем ID для последующих шагов
+                current_edit_repair_id=repair_id, # Оставляем для совместимости, но лучше использовать repair_id_to_edit
+                temp_breakdowns=current_breakdowns[:] # Сохраняем КОПИЮ в состояние
+            )
+
+            # --- ИЗМЕНЕНИЕ 2: Фильтруем для клавиатуры только стандартные поломки ---
+            standard_breakdowns = [
+                b for b in current_breakdowns if not re.search(r"\s+\d+$", b)
+            ]
+            
             await callback.message.edit_text(
                 "Выберите стандартные поломки для электровелосипеда или введите свои (текущие поломки ниже):\n\n"
                 + ", ".join(current_repair_data.get("breakdowns", []))
                 + "\n\n",
-                reply_markup=e_bike_problems_inline(current_breakdowns_no_cost),
+                reply_markup=e_bike_problems_inline(standard_breakdowns),
             )
 
     elif field_name == "cost":
         await state.set_state(EditRepairForm.cost)
         current_cost = current_repair_data.get("cost", 0)
         await callback.message.edit_text(
-            f"Введите новую стоимость (текущая: {current_cost} руб.):"
+            f"Введите новую стоимость (текущая: <code>{current_cost}</code> руб.):"
         )
     elif field_name == "notes":
         await state.set_state(EditRepairForm.notes)
         await callback.message.edit_text(
-            f"Введите новые примечания (текущие: {current_repair_data.get('notes', '-')}):"
+            f"Введите новые примечания (текущие: <code>{current_repair_data.get('notes', '-')}</code>):"
         )
     elif field_name == "date":
         await state.set_state(EditRepairForm.date)
         await callback.message.edit_text(
-            f"Введите новую дату в формате ДД.ММ.ГГГГ (текущая: {current_repair_data.get('date', '-')}):"
+            f"Введите новую дату в формате ДД.ММ.ГГГГ (текущая: <code>{current_repair_data.get('date', '-')}</code>):"
         )
 
     await callback.answer()
@@ -155,44 +155,25 @@ async def select_field_to_edit(callback: CallbackQuery, state: FSMContext):
     EditRepairForm.e_bike_breakdowns_edit_select,
 )
 async def edit_e_bike_problem_select(callback: CallbackQuery, state: FSMContext):
+    # --- ИЗМЕНЕНИЕ 3: Полностью переработанная логика работы с состоянием FSM ---
     problem_text = callback.data.split(":")[1]
     user_data = await state.get_data()
-    repair_id = user_data.get(
-        "current_edit_repair_id"
-    )  # Получаем ID текущего редактируемого ремонта
+    # Получаем список поломок из состояния FSM, а не из файла
+    temp_breakdowns = user_data.get("temp_breakdowns", [])
 
-    if repair_id is None:
-        await callback.message.answer(
-            "Ошибка: ID ремонта для редактирования не найден.",
-            reply_markup=main_reply_kb(),
-        )
-        await state.clear()
-        await callback.answer()
-        return
-
-    current_repair_data = storage.get_active_repair_data_by_id(int(repair_id))
-    if not current_repair_data:
-        await callback.message.answer("Ремонт не найден.", reply_markup=main_reply_kb())
-        await state.clear()
-        await callback.answer()
-        return
-
-    breakdowns = current_repair_data.get("breakdowns", [])[:]  # Копируем список
-
-    if problem_text in breakdowns:
-        breakdowns.remove(problem_text)
+    if problem_text in temp_breakdowns:
+        temp_breakdowns.remove(problem_text)
     else:
-        breakdowns.append(problem_text)
+        temp_breakdowns.append(problem_text)
 
-    storage.update_repair_field(repair_id, "breakdowns", breakdowns)
-
+    # Обновляем временный список в состоянии FSM
+    await state.update_data(temp_breakdowns=temp_breakdowns)
+    
     # Обновляем клавиатуру, показывая текущие выбранные (стандартные) поломки
-    # Для отображения галочек, нам нужны только те, которые без цены
-    breakdowns_no_cost = [b for b in breakdowns if not re.search(r"\s+\d+$", b)]
+    standard_breakdowns = [b for b in temp_breakdowns if not re.search(r"\s+\d+$", b)]
     await callback.message.edit_reply_markup(
-        reply_markup=e_bike_problems_inline(breakdowns_no_cost)
+        reply_markup=e_bike_problems_inline(standard_breakdowns)
     )
-
     await callback.answer()
 
 
@@ -204,71 +185,63 @@ async def edit_e_bike_input_custom_breakdowns(
 ):
     await state.set_state(EditRepairForm.e_bike_breakdowns_edit_custom)
     user_data = await state.get_data()
-    repair_id = user_data.get("current_edit_repair_id")
-    current_repair_data = storage.get_active_repair_data_by_id(int(repair_id))
-    current_breakdowns_str = ", ".join(current_repair_data.get("breakdowns", []))
+    # Получаем текущие поломки из FSM для отображения
+    temp_breakdowns = user_data.get("temp_breakdowns", [])
+    current_breakdowns_str = ", ".join(temp_breakdowns)
 
     await callback.message.edit_text(
-        "Введите свои поломки (можно несколько через запятую) и их стоимость через пробел "
-        "(например: 'Замена цепи 500, Настройка тормозов 300').\n"
-        "Чтобы пропустить, отправьте '-'."
-        f"\nТекущие поломки: <code>{current_breakdowns_str}</code>"
+        "Введите <i>только кастомные</i> поломки (с ценой через пробел, через запятую), "
+        "которые вы хотите добавить. Стандартные поломки, выбранные галочками, сохранятся.\n"
+        "Чтобы пропустить, отправьте '-'.\n"
+        f"\nТекущий полный список: <code>{current_breakdowns_str}</code>"
     )
     await callback.answer()
 
 
 @router.message(EditRepairForm.e_bike_breakdowns_edit_custom)
 async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMContext):
+    # --- ИЗМЕНЕНИЕ 4: Правильно комбинируем стандартные и кастомные поломки и переходим к подтверждению цены ---
     text = message.text
     user_data = await state.get_data()
-    repair_id = user_data.get("current_edit_repair_id")
+    repair_id = user_data.get("repair_id_to_edit")
+    temp_breakdowns = user_data.get("temp_breakdowns", [])
 
     if repair_id is None:
-        await message.answer(
-            "Ошибка: ID ремонта для редактирования не найден.",
-            reply_markup=main_reply_kb(),
-        )
+        await message.answer("Ошибка: ID ремонта для редактирования не найден.", reply_markup=main_reply_kb())
         await state.clear()
         return
 
-    current_repair_data = storage.get_active_repair_data_by_id(int(repair_id))
-    if not current_repair_data:
-        await message.answer("Ремонт не найден.", reply_markup=main_reply_kb())
-        await state.clear()
-        return
-
-    # Разделяем текущие поломки на стандартные (без цены) и кастомные (с ценой)
-    existing_standard_breakdowns = [
-        b
-        for b in current_repair_data.get("breakdowns", [])
-        if not re.search(r"\s+\d+$", b)
+    # 1. Берем стандартные поломки (без цены) из временного списка
+    standard_selections = [
+        b for b in temp_breakdowns if not re.search(r"\s+\d+$", b)
     ]
-
-    custom_breakdowns_list, calculated_cost = [], 0
-
+    
+    # 2. Парсим новые кастомные поломки
+    custom_breakdowns_list, _ = [], 0
     if text != "-":
-        custom_breakdowns_list, calculated_cost = parse_breakdowns_with_cost(text)
+        custom_breakdowns_list, _ = parse_breakdowns_with_cost(text)
 
-    final_breakdowns = existing_standard_breakdowns + custom_breakdowns_list
-
+    # 3. Соединяем их
+    final_breakdowns = standard_selections + custom_breakdowns_list
+    
+    # 4. Сохраняем итоговый список поломок в файл
     storage.update_repair_field(repair_id, "breakdowns", final_breakdowns)
 
-    # Пересчитываем общую стоимость из всех поломок
+    # 5. Пересчитываем общую стоимость и предлагаем ее подтвердить
     total_cost_from_breakdowns = 0
     for bd in final_breakdowns:
         match = re.search(r"\s+(\d+)$", bd)
         if match:
             total_cost_from_breakdowns += int(match.group(1))
 
-    storage.update_repair_field(repair_id, "cost", total_cost_from_breakdowns)
-
-    repair = storage.get_active_repair_data_by_id(int(repair_id))
+    await state.update_data(calculated_cost=total_cost_from_breakdowns)
+    await state.set_state(EditRepairForm.cost) # Переходим к состоянию подтверждения цены
+    
     await message.answer(
-        f"✅ Поломки и стоимость обновлены для ремонта ID: {repair_id}.\n\n"
-        + format_repair_details(repair),
-        reply_markup=detail_repair_inline(repair_id),
+        f"Поломки обновлены. Предполагаемая стоимость: <b>{total_cost_from_breakdowns} руб.</b>\n"
+        "Введите итоговую стоимость или нажмите 'Принять', чтобы использовать предложенную сумму.",
+        reply_markup=confirm_total_cost_kb(total_cost_from_breakdowns),
     )
-    await state.clear()
 
 
 @router.callback_query(
@@ -276,43 +249,41 @@ async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMCont
     EditRepairForm.e_bike_breakdowns_edit_select,
 )
 async def finish_edit_e_bike_selection(callback: CallbackQuery, state: FSMContext):
+    # --- ИЗМЕНЕНИЕ 5: Логика завершения выбора теперь тоже переходит к подтверждению цены ---
     user_data = await state.get_data()
-    repair_id = user_data.get("current_edit_repair_id")
+    repair_id = user_data.get("repair_id_to_edit")
+    final_breakdowns = user_data.get("temp_breakdowns", []) # Берем итоговый список из состояния
 
     if repair_id is None:
-        await callback.message.answer(
-            "Ошибка: ID ремонта для редактирования не найден.",
-            reply_markup=main_reply_kb(),
-        )
+        await callback.message.answer("Ошибка: ID ремонта для редактирования не найден.", reply_markup=main_reply_kb())
         await state.clear()
-        await callback.answer()
         return
 
-    repair = storage.get_active_repair_data_by_id(int(repair_id))
-    if not repair:
-        await callback.message.answer("Ремонт не найден.", reply_markup=main_reply_kb())
-        await state.clear()
-        await callback.answer()
-        return
-
-    # Пересчитываем общую стоимость из всех поломок
+    # Сохраняем итоговый список поломок в файл
+    storage.update_repair_field(repair_id, "breakdowns", final_breakdowns)
+    
+    # Пересчитываем общую стоимость
     total_cost_from_breakdowns = 0
-    for bd in repair.get("breakdowns", []):
+    for bd in final_breakdowns:
         match = re.search(r"\s+(\d+)$", bd)
         if match:
             total_cost_from_breakdowns += int(match.group(1))
-
-    storage.update_repair_field(repair_id, "cost", total_cost_from_breakdowns)
+            
+    # Переходим к состоянию подтверждения цены
+    await state.update_data(calculated_cost=total_cost_from_breakdowns)
+    await state.set_state(EditRepairForm.cost)
 
     await callback.message.edit_text(
-        f"✅ Поломки и стоимость обновлены для ремонта ID: {repair_id}.\n\n"
-        + format_repair_details(repair),
-        reply_markup=detail_repair_inline(repair_id),
+        f"Выбор поломок завершен. Предполагаемая стоимость: <b>{total_cost_from_breakdowns} руб.</b>\n"
+        "Введите итоговую стоимость или нажмите 'Принять'.",
+        reply_markup=confirm_total_cost_kb(total_cost_from_breakdowns),
     )
-    await state.clear()
     await callback.answer()
 
 
+# Остальной код файла edit_repairs.py остается без изменений
+# (обработчики update_fio, update_contact, update_bike_type и т.д.)
+# ... (весь оставшийся код файла) ...
 @router.message(EditRepairForm.fio)
 async def update_fio(message: Message, state: FSMContext):
     user_data = await state.get_data()
@@ -483,14 +454,6 @@ async def cancel_edit(callback: CallbackQuery, state: FSMContext):
             "Редактирование отменено.", reply_markup=main_reply_kb()
         )
     await callback.answer()
-
-
-
-
-
-
-
-
 
 @router.callback_query(F.data.startswith("close_repair:"))
 async def close_repair(callback: CallbackQuery, state: FSMContext):

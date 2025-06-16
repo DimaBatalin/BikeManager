@@ -31,7 +31,8 @@ def register_handlers(dp):
 
 @router.message(F.text == "Действующие ремонты")
 @router.message(Command("active_repairs"))
-async def show_active_repairs_list(message: Message):
+async def show_active_repairs_list(message: Message, state: FSMContext):
+    await state.set_state(state=None)
     active_repairs = storage.get_active_repairs()
     if not active_repairs:
         # Если ремонтов нет, предлагаем создать новый сразу
@@ -46,6 +47,7 @@ async def show_active_repairs_list(message: Message):
         "Выберите клиента для просмотра деталей ремонта:",
         reply_markup=active_repairs_inline(active_repairs),
     )
+
 
 @router.callback_query(F.data.startswith("show_active_repair_details:"))
 async def show_specific_active_repair_details(callback: CallbackQuery):

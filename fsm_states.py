@@ -25,3 +25,7 @@ class EditRepairForm(StatesGroup):
     notes = State()
     date = State()
     is_mechanics = State()
+
+
+class EditArchiveForm(StatesGroup):
+    waiting_for_date = State()

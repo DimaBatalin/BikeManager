@@ -8,10 +8,10 @@ import locale
 from typing import Any, Dict, List
 
 try:
-    locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
+    locale.setlocale(locale.LC_ALL, "ru_RU.UTF-8")
 except locale.Error:
     try:
-        locale.setlocale(locale.LC_ALL, 'Russian_Russia.1251')
+        locale.setlocale(locale.LC_ALL, "Russian_Russia.1251")
     except locale.Error:
         print("Не удалось установить русскую локаль. Месяцы будут на английском.")
 
@@ -215,19 +215,19 @@ def get_reports_data(period_type: str, num_periods: int) -> List[Dict[str, Any]]
     reports = []
     today = datetime.now().date()
 
-    if period_type == 'week':
+    if period_type == "week":
         # current_weekday = today.weekday() # 0 for Monday, 6 for Sunday
         # current_week_start = today - timedelta(days=current_weekday)
-        
+
         # Changed to iterate backwards from today, and find the start/end of the week
         # This aligns better with "9-14, 2-8, 26-1, 19-25" example from user
         for i in range(num_periods):
             # Calculate the end of the current week (Sunday)
             # Example: if today is Friday (weekday=4), and we want this week's end (Sunday), add 2 days.
             # (6 - today.weekday()) gives days to Sunday
-            # current_week_end = today + timedelta(days=6 - today.weekday()) 
+            # current_week_end = today + timedelta(days=6 - today.weekday())
             # This logic will find the current week, then the previous full weeks.
-            
+
             # To get "9-14, 2-8, 26-1, 19-25" style:
             # We need to find the Sunday of the *current* week, then subtract weeks.
             # today.weekday() gives 0 (Mon) to 6 (Sun).
@@ -236,7 +236,7 @@ def get_reports_data(period_type: str, num_periods: int) -> List[Dict[str, Any]]
 
             # Find the Sunday of the current week
             current_sunday = today + timedelta(days=6 - today.weekday())
-            
+
             # For each iteration, subtract 'i' weeks from this current_sunday
             week_end = current_sunday - timedelta(weeks=i)
             week_start = week_end - timedelta(days=6)
@@ -249,39 +249,47 @@ def get_reports_data(period_type: str, num_periods: int) -> List[Dict[str, Any]]
                 archive_date_str = repair.get("archive_date")
                 if archive_date_str:
                     try:
-                        arch_date = datetime.strptime(archive_date_str, "%d.%m.%Y").date()
+                        arch_date = datetime.strptime(
+                            archive_date_str, "%d.%m.%Y"
+                        ).date()
                         if week_start <= arch_date <= week_end:
                             period_repairs.append(repair)
-                            total_cost += repair.get('cost', 0)
+                            total_cost += repair.get("cost", 0)
                             bike_count += 1
                     except ValueError:
                         continue
 
-            reports.append({
-                "period_name": f"с {week_start.day:02d}.{week_start.month:02d} по {week_end.day:02d}.{week_end.month:02d}",
-                "start_date": week_start.strftime("%d.%m.%Y"),
-                "end_date": week_end.strftime("%d.%m.%Y"),
-                "bike_count": bike_count,
-                "total_cost": total_cost,
-                "repairs": period_repairs
-            })
-        
-        reports.reverse() 
+            reports.append(
+                {
+                    "period_name": f"с {week_start.day:02d}.{week_start.month:02d} по {week_end.day:02d}.{week_end.month:02d}",
+                    "start_date": week_start.strftime("%d.%m.%Y"),
+                    "end_date": week_end.strftime("%d.%m.%Y"),
+                    "bike_count": bike_count,
+                    "total_cost": total_cost,
+                    "repairs": period_repairs,
+                }
+            )
 
-    elif period_type == 'month':
+        reports.reverse()
+
+    elif period_type == "month":
         for i in range(num_periods):
             # Calculate the target month and year
             target_month = today.month - i
             target_year = today.year
 
-            while target_month <= 0: # Adjust year if month goes below 1
+            while target_month <= 0:  # Adjust year if month goes below 1
                 target_month += 12
                 target_year -= 1
 
             # Get the first day of the target month
             month_start = date(target_year, target_month, 1)
             # Get the last day of the target month
-            month_end = date(target_year, target_month, calendar.monthrange(target_year, target_month)[1])
+            month_end = date(
+                target_year,
+                target_month,
+                calendar.monthrange(target_year, target_month)[1],
+            )
 
             period_repairs = []
             total_cost = 0
@@ -291,23 +299,61 @@ def get_reports_data(period_type: str, num_periods: int) -> List[Dict[str, Any]]
                 archive_date_str = repair.get("archive_date")
                 if archive_date_str:
                     try:
-                        arch_date = datetime.strptime(archive_date_str, "%d.%m.%Y").date()
+                        arch_date = datetime.strptime(
+                            archive_date_str, "%d.%m.%Y"
+                        ).date()
                         if month_start <= arch_date <= month_end:
                             period_repairs.append(repair)
-                            total_cost += repair.get('cost', 0)
+                            total_cost += repair.get("cost", 0)
                             bike_count += 1
                     except ValueError:
                         continue
 
-            reports.append({
-                "period_name": f"{calendar.month_name[target_month].capitalize()} {target_year}",
-                "start_date": month_start.strftime("%d.%m.%Y"),
-                "end_date": month_end.strftime("%d.%m.%Y"),
-                "bike_count": bike_count,
-                "total_cost": total_cost,
-                "repairs": period_repairs
-            })
-        
-        reports.reverse() 
+            reports.append(
+                {
+                    "period_name": f"{calendar.month_name[target_month].capitalize()} {target_year}",
+                    "start_date": month_start.strftime("%d.%m.%Y"),
+                    "end_date": month_end.strftime("%d.%m.%Y"),
+                    "bike_count": bike_count,
+                    "total_cost": total_cost,
+                    "repairs": period_repairs,
+                }
+            )
+
+        reports.reverse()
 
     return reports
+
+
+def update_archive_repair_field(repair_id: int, field_name: str, new_value):
+    """
+    Обновляет указанное поле у ремонта в АРХИВЕ.
+    """
+    with lock:
+        archive_repairs = _load(config.ARCHIVE_PATH)
+        updated = False
+        for repair in archive_repairs:
+            if repair.get("id") == repair_id:
+                repair[field_name] = new_value
+                updated = True
+                break
+        if updated:
+            _save(config.ARCHIVE_PATH, archive_repairs)
+        return updated
+
+
+def delete_repair_from_archive_by_id(repair_id: int) -> bool:
+    """
+    Безвозвратно удаляет ремонт из архива по ID.
+    Возвращает True, если ремонт найден и удален.
+    """
+    with lock:
+        archive = _load(config.ARCHIVE_PATH)
+        original_length = len(archive)
+
+        archive_filtered = [r for r in archive if r.get("id") != repair_id]
+
+        if len(archive_filtered) < original_length:
+            _save(config.ARCHIVE_PATH, archive_filtered)
+            return True
+        return False

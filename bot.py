@@ -1,5 +1,10 @@
+# bot.py
+
 import logging
 import asyncio
+
+# Убираем импорт ClientTimeout, он здесь не нужен
+# from aiohttp import ClientTimeout
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -9,11 +14,14 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from middlewares.access_control import AccessControlMiddleware
 
 import config
+# Используем псевдоним json_storage, чтобы избежать конфликта имен
+import services.storage as json_storage
+from datetime import datetime, timedelta
 
 # Уровень логирования
 logging.basicConfig(level=logging.INFO)
 
-# Инициализируем Bot с токеном и HTML-парсингом
+# Инициализируем Bot со стандартной сессией. Ее настроек по умолчанию достаточно.
 bot = Bot(
     token=config.TG_TOKEN,
     default=DefaultBotProperties(parse_mode="HTML"),
@@ -21,6 +29,7 @@ bot = Bot(
 )
 
 # Указываем, что будем хранить состояние FSM в оперативной памяти
+# Это имя `storage` используется диспетчером aiogram
 storage = MemoryStorage()
 
 # Создаём Dispatcher и привязываем к нему storage
@@ -45,15 +54,38 @@ dp.include_router(archive_router)
 dp.include_router(reports_router)
 
 
+async def cleanup_old_archives():
+    """Удаляет из архива записи старше одного года."""
+    logging.info("Запуск очистки старых архивов...")
+    one_year_ago = datetime.now() - timedelta(days=365)
+    
+    archive_repairs = json_storage.get_archive_repairs()
+    
+    # Фильтруем, оставляя только те, что новее года
+    recent_archive = [
+        r for r in archive_repairs
+        if datetime.strptime(r.get('archive_date', '01.01.1970'), "%d.%m.%Y") > one_year_ago
+    ]
+    
+    if len(recent_archive) < len(archive_repairs):
+        json_storage.update_archive_repairs(recent_archive)
+        logging.info(f"Очистка завершена. Удалено {len(archive_repairs) - len(recent_archive)} старых записей.")
+    else:
+        logging.info("Старых записей для удаления не найдено.")
+
+
 async def main():    
+    await cleanup_old_archives() # Вызываем очистку при старте
+    
+    # Этот цикл обеспечивает автоматический перезапуск бота при любой критической ошибке
     while True:
         try:
+            logging.info("Бот запускается...")
             await dp.start_polling(bot)
-        except asyncio.exceptions.CancelledError:
-            break
-        finally:
-            await dp.stop_polling()
-    
+        except Exception as e:
+            logging.error(f"Произошла критическая ошибка: {e}")
+            logging.info("Перезапуск через 15 секунд...")
+            await asyncio.sleep(15)
 
 
 if __name__ == "__main__":

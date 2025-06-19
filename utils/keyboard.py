@@ -220,9 +220,17 @@ def archive_repair_inline(repair_id: int) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                text="Восстановить", callback_data=f"restore_repair:{repair_id}"
+                text="♻️ Восстановить", callback_data=f"restore_repair:{repair_id}"
             ),
-        ]
+        ],
+        [
+            InlineKeyboardButton(
+                text="✏️ Изменить дату", callback_data=f"edit_archive_date:{repair_id}"
+            ),
+            InlineKeyboardButton(
+                text="🗑️ Удалить навсегда", callback_data=f"delete_repair:{repair_id}"
+            ),
+        ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -257,4 +265,31 @@ def confirm_total_cost_kb(suggested_cost: int) -> InlineKeyboardMarkup:
             )
         ],
     ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def archive_pagination_kb(
+    page: int, total_pages: int, repair_id: int
+) -> InlineKeyboardMarkup:
+    buttons = [[]]  # Первый ряд для кнопок "назад" и "вперед"
+
+    if page > 0:
+        buttons[0].append(
+            InlineKeyboardButton(text="⬅️ Назад", callback_data=f"archive_page:{page-1}")
+        )
+
+    buttons[0].append(
+        InlineKeyboardButton(text=f"{page+1}/{total_pages}", callback_data="ignore")
+    )
+
+    if page < total_pages - 1:
+        buttons[0].append(
+            InlineKeyboardButton(
+                text="Вперед ➡️", callback_data=f"archive_page:{page+1}"
+            )
+        )
+
+    # Кнопки для конкретной записи
+    buttons.extend(archive_repair_inline(repair_id).inline_keyboard)
+
     return InlineKeyboardMarkup(inline_keyboard=buttons)

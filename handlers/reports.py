@@ -64,7 +64,7 @@ async def generate_report(callback: CallbackQuery):
     for report in reports_data:
         if period_type == "week":
             period_display = f"с {report['start_date']} по {report['end_date']}"
-        else: 
+        else:
             period_display = report["period_name"]
 
         message_part = (
@@ -84,7 +84,7 @@ async def generate_report(callback: CallbackQuery):
             await callback.message.answer(
                 current_message_batch, reply_markup=main_reply_kb()
             )
-            current_message_batch = part  # Начинаем новую порцию
+            current_message_batch = part
         else:
             current_message_batch += part
 
@@ -93,4 +93,3 @@ async def generate_report(callback: CallbackQuery):
         await callback.message.answer(
             current_message_batch, reply_markup=main_reply_kb()
         )
-

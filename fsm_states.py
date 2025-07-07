@@ -1,7 +1,9 @@
 from aiogram.fsm.state import StatesGroup, State
 
+
 class RepairForm(StatesGroup):
     fio = State()
+    repair_type = State()
     contact = State()
     bike_type = State()
     namebike = State()
@@ -10,6 +12,10 @@ class RepairForm(StatesGroup):
     e_bike_breakdowns_custom = State()
     cost = State()
     notes = State()
+
+
+class ReportState(StatesGroup):
+    waiting_for_period = State()
 
 
 class EditRepairForm(StatesGroup):

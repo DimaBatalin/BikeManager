@@ -1,5 +1,7 @@
 from typing import Dict, Any
 from re import search
+from config import REPAIR_SOURCES
+
 
 def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
     breakdowns_list = []
@@ -33,12 +35,16 @@ def format_repair_details(repair: Dict[str, Any]) -> str:
     notes = repair.get("notes", "-")
     date_created = repair.get("date", "Неизвестно")
 
+    repair_name = repair.get("repair_type", False)
+    repair_type = REPAIR_SOURCES[repair_name] if repair_name else "Не указано"
+
     message_text = (
         f"🛠️ <b>Детали Ремонта ID:</b> <code>{repair_id}</code> 🛠️\n"
         f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
         f"👤 <b>Клиент:</b> {fio}\n"
         f"📞 <b>Контакт:</b> <code>{contact}</code>\n"
         f"📅 <b>Дата создания:</b> <code>{date_created}</code>\n"
+        f"🔧 <b>Источник:</b> {repair_type}\n"
         f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
         f"🚲 <b>Тип велосипеда:</b> {bike_type}\n"
         f"🔖 <b>Название:</b> {namebike}\n"
@@ -67,6 +73,9 @@ def format_archived_repair_details(repair: Dict[str, Any]) -> str:
     date_created = repair.get("date", "Неизвестно")
     archive_date = repair.get("archive_date", "Неизвестно")
 
+    repair_name = repair.get("repair_type", False)
+    repair_type = REPAIR_SOURCES[repair_name] if repair_name else "Не указано"
+
     message_text = (
         f"📦 <b>Архивный Ремонт ID:</b> <code>{repair_id}</code> 📦\n"
         f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
@@ -74,6 +83,7 @@ def format_archived_repair_details(repair: Dict[str, Any]) -> str:
         f"📞 <b>Контакт:</b> <code>{contact}</code>\n"
         f"📅 <b>Дата создания:</b> <code>{date_created}</code>\n"
         f"📦 <b>Дата архивирования:</b> <code>{archive_date}</code>\n"
+        f"🔧 <b>Источник:</b> {repair_type}\n"
         f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
         f"🚲 <b>Тип велосипеда:</b> {bike_type}\n"
         f"🔖 <b>Название:</b> {namebike}\n"
@@ -92,7 +102,6 @@ def format_name(full_name: str) -> str:
 
     last_name = parts[0]
 
-    # Инициалы (если есть имя и отчество)
     initials = []
     if len(parts) > 1:
         initials.append(parts[1][0] + "." if parts[1] else "")

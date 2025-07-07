@@ -1,4 +1,3 @@
-# keyboards.py
 from aiogram.types import (
     KeyboardButton,
     ReplyKeyboardMarkup,
@@ -7,31 +6,56 @@ from aiogram.types import (
 )
 from utils.formatter import (
     format_name,
-)  # Убедитесь, что `utils/formatter.py` существует и содержит `format_name`
+)
 from services import (
     storage,
-)  # Убедитесь, что `services/storage.py` существует и содержит необходимые функции
+)
 from config import (
-    ELECTRIC_BIKE_BREAKDOWNS_PATH,
-)  # Убедитесь, что `config.py` существует и содержит этот путь
+    ELECTRIC_BIKE_BREAKDOWNS_PATH, REPAIR_SOURCES
+)
 
 
 def main_reply_kb() -> ReplyKeyboardMarkup:
-    """
-    Главное Reply-меню: Действующие ремонты, Отчёты, Архив
-    """
     buttons = [
         [KeyboardButton(text="Действующие ремонты"), KeyboardButton(text="Отчёты")],
-        [KeyboardButton(text="Архив")],
+        [
+            KeyboardButton(text="Архив")
+        ],
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 
+# --- НОВАЯ ФУНКЦИЯ ---
+def select_repair_source_inline() -> InlineKeyboardMarkup:
+    """
+    Клавиатура для выбора источника/типа ремонта.
+    """
+    buttons = []
+    for key, value in REPAIR_SOURCES.items():
+        buttons.append(
+            [InlineKeyboardButton(text=value, callback_data=f"set_source:{key}")]
+        )
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+# --- НОВАЯ ФУНКЦИЯ ---
+def source_filter_inline_kb(prefix: str) -> InlineKeyboardMarkup:
+    """
+    Клавиатура для фильтрации по источнику в архиве и отчетах.
+    `prefix` должен быть 'archive_filter' или 'report_filter'.
+    """
+    buttons = [
+        [InlineKeyboardButton(text="Показать все", callback_data=f"{prefix}:all")]
+    ]
+    for key, value in REPAIR_SOURCES.items():
+        buttons.append(
+            [InlineKeyboardButton(text=value, callback_data=f"{prefix}:{key}")]
+        )
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 def active_repairs_inline(active_list: list = []) -> InlineKeyboardMarkup:
-    """
-    Inline-клавиатура: по одному ряду на каждый активный ремонт (текст = ФИО, data = "show_{id}"),
-    + внизу кнопка "➕ Создать новый ремонт".
-    """
     keyboard = []
     for r in active_list:
         fio = format_name(r.get("FIO", "Без имени"))
@@ -56,10 +80,6 @@ def active_repairs_inline(active_list: list = []) -> InlineKeyboardMarkup:
 
 
 def detail_repair_inline(repair_id: str | int) -> InlineKeyboardMarkup:
-    """
-    Две кнопки: "✏️ Редактировать" (data="edit:{id}") и "✅ Закрыть" (data="close:{id}")
-    """
-    # Преобразуем repair_id в строку, если он int, для использования в callback_data
     str_repair_id = str(repair_id)
     keyboard = [
         [
@@ -75,13 +95,7 @@ def detail_repair_inline(repair_id: str | int) -> InlineKeyboardMarkup:
 
 
 def e_bike_problems_inline(selected_problems: list = []) -> InlineKeyboardMarkup:
-    """
-    Инлайн-клавиатура для выбора поломок электровелосипеда,
-    добавлена кнопка "Ввести свои поломки".
-    """
-    # Этот список проблем должен быть полным
     problems = storage._load(ELECTRIC_BIKE_BREAKDOWNS_PATH)
-
     buttons = []
     for problem in problems:
         is_selected = problem in selected_problems
@@ -90,7 +104,6 @@ def e_bike_problems_inline(selected_problems: list = []) -> InlineKeyboardMarkup
         buttons.append(
             [InlineKeyboardButton(text=button_text, callback_data=callback_data)]
         )
-
     buttons.append(
         [
             InlineKeyboardButton(
@@ -105,19 +118,7 @@ def e_bike_problems_inline(selected_problems: list = []) -> InlineKeyboardMarkup
             )
         ]
     )
-
     return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-
-def report_options_inline() -> InlineKeyboardMarkup:
-    """
-    Выбор типа отчёта: "По неделям" (data="report:weeks") и "По месяцам" (data="report:months").
-    """
-    keyboard = [
-        [InlineKeyboardButton(text="По неделям", callback_data="report:weeks")],
-        [InlineKeyboardButton(text="По месяцам", callback_data="report:months")],
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def edit_repair_options_inline(repair_id: int) -> InlineKeyboardMarkup:
@@ -129,6 +130,12 @@ def edit_repair_options_inline(repair_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="ФИО", callback_data=f"field:FIO:{repair_id}"),
             InlineKeyboardButton(
                 text="Контакт", callback_data=f"field:contact:{repair_id}"
+            ),
+        ],
+        # --- НОВАЯ КНОПКА ---
+        [
+            InlineKeyboardButton(
+                text="Источник", callback_data=f"field:repair_type:{repair_id}"
             ),
         ],
         [
@@ -151,9 +158,7 @@ def edit_repair_options_inline(repair_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(
                 text="Примечания", callback_data=f"field:notes:{repair_id}"
             ),
-            InlineKeyboardButton(
-                text="Дата", callback_data=f"field:date:{repair_id}"
-            ),  # New: Add Date option
+            InlineKeyboardButton(text="Дата", callback_data=f"field:date:{repair_id}"),
         ],
         [InlineKeyboardButton(text="Отмена", callback_data=f"cancel_edit:{repair_id}")],
     ]
@@ -161,9 +166,6 @@ def edit_repair_options_inline(repair_id: int) -> InlineKeyboardMarkup:
 
 
 def select_bike_type_inline() -> InlineKeyboardMarkup:
-    """
-    Клавиатура для выбора типа велосипеда (механический/электрический).
-    """
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -183,9 +185,6 @@ def select_bike_type_inline() -> InlineKeyboardMarkup:
 
 
 def edit_bike_type_inline(repair_id: int) -> InlineKeyboardMarkup:
-    """
-    Клавиатура для изменения типа велосипеда при редактировании.
-    """
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -204,9 +203,6 @@ def edit_bike_type_inline(repair_id: int) -> InlineKeyboardMarkup:
 
 
 def skip_notes_inline_kb() -> InlineKeyboardMarkup:
-    """
-    Инлайн-клавиатура для пропуска ввода примечаний.
-    """
     buttons = [
         [InlineKeyboardButton(text="Без примечаний", callback_data="skip_notes")]
     ]
@@ -214,9 +210,6 @@ def skip_notes_inline_kb() -> InlineKeyboardMarkup:
 
 
 def archive_repair_inline(repair_id: int) -> InlineKeyboardMarkup:
-    """
-    Инлайн-клавиатура для архивированного ремонта.
-    """
     buttons = [
         [
             InlineKeyboardButton(
@@ -236,9 +229,6 @@ def archive_repair_inline(repair_id: int) -> InlineKeyboardMarkup:
 
 
 def report_options_inline_kb() -> InlineKeyboardMarkup:
-    """
-    Инлайн-клавиатура для выбора типа отчёта (Неделя/Месяц).
-    """
     buttons = [
         [
             InlineKeyboardButton(text="За неделю", callback_data="report_type:week"),
@@ -249,9 +239,6 @@ def report_options_inline_kb() -> InlineKeyboardMarkup:
 
 
 def confirm_total_cost_kb(suggested_cost: int) -> InlineKeyboardMarkup:
-    """
-    Клавиатура для подтверждения предложенной суммы.
-    """
     buttons = [
         [
             InlineKeyboardButton(
@@ -271,25 +258,19 @@ def confirm_total_cost_kb(suggested_cost: int) -> InlineKeyboardMarkup:
 def archive_pagination_kb(
     page: int, total_pages: int, repair_id: int
 ) -> InlineKeyboardMarkup:
-    buttons = [[]]  # Первый ряд для кнопок "назад" и "вперед"
-
+    buttons = [[]]
     if page > 0:
         buttons[0].append(
             InlineKeyboardButton(text="⬅️ Назад", callback_data=f"archive_page:{page-1}")
         )
-
     buttons[0].append(
         InlineKeyboardButton(text=f"{page+1}/{total_pages}", callback_data="ignore")
     )
-
     if page < total_pages - 1:
         buttons[0].append(
             InlineKeyboardButton(
                 text="Вперед ➡️", callback_data=f"archive_page:{page+1}"
             )
         )
-
-    # Кнопки для конкретной записи
     buttons.extend(archive_repair_inline(repair_id).inline_keyboard)
-
     return InlineKeyboardMarkup(inline_keyboard=buttons)

@@ -152,28 +152,27 @@ def update_repair_field(repair_id: int, field_name: str, new_value):
         return updated
 
 
-# --- НОВАЯ ФУНКЦИЯ ДЛЯ АРХИВА ---
-def get_archived_repairs_last_two_months() -> list:
+def get_archived_repairs_last_two_months(source_filter: str = "all") -> list:
     """
     Возвращает список архивированных ремонтов за последние 2 месяца.
+    Добавлена фильтрация по источнику (repair_type).
     """
     all_archive_repairs = _load(config.ARCHIVE_PATH)
-
-    # Определяем дату 2 месяца назад от текущей
-    two_months_ago = datetime.now() - timedelta(days=60)  # Приблизительно 2 месяца
-
+    two_months_ago = datetime.now() - timedelta(days=60)
     recent_repairs = []
     for repair in all_archive_repairs:
         archive_date_str = repair.get("archive_date")
         if archive_date_str:
             try:
-                # Парсим дату из строки в объект datetime
                 archive_date = datetime.strptime(archive_date_str, "%d.%m.%Y")
-                # Сравниваем дату архивирования с датой "два месяца назад"
                 if archive_date >= two_months_ago:
-                    recent_repairs.append(repair)
+                    # Применяем фильтр, если он не 'all'
+                    if (
+                        source_filter == "all"
+                        or repair.get("repair_type") == source_filter
+                    ):
+                        recent_repairs.append(repair)
             except ValueError:
-                # Игнорируем ремонты с некорректным форматом даты
                 continue
     return recent_repairs
 
@@ -210,8 +209,23 @@ def restore_repair_by_id(repair_id: int) -> bool:
         return True
 
 
-def get_reports_data(period_type: str, num_periods: int) -> List[Dict[str, Any]]:
+def get_reports_data(
+    period_type: str, num_periods: int, source_filter: str = "all"
+) -> List[Dict[str, Any]]:
+    """
+    Собирает данные для отчетов с учетом фильтрации по источнику.
+    """
     all_archive_repairs = _load(config.ARCHIVE_PATH)
+
+    # --- НОВЫЙ БЛОК ФИЛЬТРАЦИИ ---
+    if source_filter != "all":
+        filtered_list = []
+        for r in all_archive_repairs:
+            if r.get("repair_type") == source_filter:
+                filtered_list.append(r)
+        all_archive_repairs = filtered_list
+    # --- КОНЕЦ БЛОКА ---
+
     reports = []
     today = datetime.now().date()
 

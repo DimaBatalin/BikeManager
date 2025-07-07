@@ -4,7 +4,11 @@ from aiogram.fsm.context import FSMContext
 
 import services.storage as storage
 from utils.formatter import format_archived_repair_details
-from utils.keyboard import main_reply_kb, archive_pagination_kb
+from utils.keyboard import (
+    main_reply_kb,
+    archive_pagination_kb,
+    source_filter_inline_kb,
+)
 from datetime import datetime
 
 from fsm_states import EditArchiveForm
@@ -17,30 +21,50 @@ def register_handlers(dp):
 
 
 @router.message(F.text == "Архив")
-async def show_archive_paginated(message: Message, state: FSMContext):
+async def show_archive_filter(message: Message, state: FSMContext):
+    """Сначала показывает фильтр, потом архив."""
     await state.clear()
-    await process_archive_page(message, 0)
+    await message.answer(
+        "🗂️ Выберите категорию для просмотра архива:",
+        reply_markup=source_filter_inline_kb(prefix="archive_filter"),
+    )
 
 
-@router.callback_query(F.data.startswith("archive_page:"))
-async def handle_archive_pagination(callback: CallbackQuery):
-    page = int(callback.data.split(":")[1])
-    # Важно: используем callback.message, чтобы отредактировать существующее сообщение
-    await process_archive_page(callback.message, page, is_edit=True)
+@router.callback_query(F.data.startswith("archive_filter:"))
+async def handle_archive_filter(callback: CallbackQuery, state: FSMContext):
+    source_filter = callback.data.split(":")[1]
+    await state.update_data(source_filter=source_filter)
+    # Используем message из callback, чтобы отправить новое сообщение
+    await process_archive_page(callback.message, 0, is_edit=True, state=state)
     await callback.answer()
 
 
-async def process_archive_page(message: Message, page: int, is_edit: bool = False):
-    repairs_list = storage.get_archived_repairs_last_two_months()
+@router.callback_query(F.data.startswith("archive_page:"))
+async def handle_archive_pagination(callback: CallbackQuery, state: FSMContext):
+    page = int(callback.data.split(":")[1])
+    await process_archive_page(callback.message, page, is_edit=True, state=state)
+    await callback.answer()
+
+
+async def process_archive_page(
+    message: Message, page: int, is_edit: bool = False, state: FSMContext = None
+):
+    # Получаем фильтр из состояния FSM
+    fsm_data = await state.get_data()
+    source_filter = fsm_data.get("source_filter", "all")
+
+    repairs_list = storage.get_archived_repairs_last_two_months(source_filter)
 
     if not repairs_list:
         await message.answer(
-            "За последние 2 месяца нет архивированных ремонтов.",
+            "В этой категории нет архивированных ремонтов за последние 2 месяца.",
             reply_markup=main_reply_kb(),
         )
+        # Если редактируем сообщение, удаляем клавиатуру
+        if is_edit:
+            await message.edit_reply_markup(reply_markup=None)
         return
 
-    # Сортируем по дате, чтобы новые были сверху
     repairs_list.sort(
         key=lambda r: datetime.strptime(
             r.get("archive_date", "01.01.1970"), "%d.%m.%Y"
@@ -50,11 +74,10 @@ async def process_archive_page(message: Message, page: int, is_edit: bool = Fals
 
     total_pages = len(repairs_list)
     if page < 0 or page >= total_pages:
-        return  # Выход, если страница недействительна
+        return
 
     repair = repairs_list[page]
     repair_id = repair.get("id")
-
     text = format_archived_repair_details(repair)
     keyboard = archive_pagination_kb(page, total_pages, repair_id)
 
@@ -130,7 +153,6 @@ async def edit_archive_date_start(callback: CallbackQuery, state: FSMContext):
 async def process_new_archive_date(message: Message, state: FSMContext):
     new_date_str = message.text
     try:
-        # Проверяем, что дата в правильном формате
         datetime.strptime(new_date_str, "%d.%m.%Y")
     except ValueError:
         await message.answer("Неверный формат. Введите дату в формате ДД.ММ.ГГГГ:")

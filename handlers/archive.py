@@ -7,7 +7,6 @@ from utils.formatter import format_archived_repair_details
 from utils.keyboard import (
     main_reply_kb,
     archive_pagination_kb,
-    source_filter_inline_kb,
 )
 from datetime import datetime
 
@@ -20,14 +19,7 @@ def register_handlers(dp):
     dp.include_router(router)
 
 
-@router.message(F.text == "Архив")
-async def show_archive_filter(message: Message, state: FSMContext):
-    """Сначала показывает фильтр, потом архив."""
-    await state.clear()
-    await message.answer(
-        "🗂️ Выберите категорию для просмотра архива:",
-        reply_markup=source_filter_inline_kb(prefix="archive_filter"),
-    )
+
 
 
 @router.callback_query(F.data.startswith("archive_filter:"))

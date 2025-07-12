@@ -186,16 +186,22 @@ def select_bike_type_inline() -> InlineKeyboardMarkup:
 
 
 def edit_bike_type_inline(repair_id: int) -> InlineKeyboardMarkup:
+    """
+    Клавиатура для редактирования типа велосипеда.
+    ID ремонта (repair_id) здесь не используется в callback_data,
+    так как он получается из состояния FSM, но принимается для единообразия.
+    """
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Механика", callback_data=f"set_type:True:{repair_id}"
+                    text="Механический велосипед",
+                    callback_data="set_bike_type:mechanics",
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="Электровелосипед", callback_data=f"set_type:False:{repair_id}"
+                    text="Электровелосипед", callback_data="set_bike_type:electric"
                 )
             ],
         ]

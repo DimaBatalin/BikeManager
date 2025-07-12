@@ -1,13 +1,10 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery
 
 import services.storage as storage
 from utils.keyboard import (
     main_reply_kb,
     detail_repair_inline,
-    active_repairs_inline,
 )
 from utils.formatter import format_repair_details
 
@@ -18,24 +15,7 @@ def register_handlers(dp):
     dp.include_router(router)
 
 
-@router.message(F.text == "Действующие ремонты")
-@router.message(Command("active_repairs"))
-async def show_active_repairs_list(message: Message, state: FSMContext):
-    await state.set_state(state=None)
-    active_repairs = storage.get_active_repairs()
-    if not active_repairs:
-        # Если ремонтов нет, предлагаем создать новый сразу
-        await message.answer(
-            "На данный момент нет действующих ремонтов. Хотите создать новый?",
-            reply_markup=active_repairs_inline(),
-        )
-        return
 
-    # Отправляем клавиатуру со списком ФИО
-    await message.answer(
-        "Выберите клиента для просмотра деталей ремонта:",
-        reply_markup=active_repairs_inline(active_repairs),
-    )
 
 
 @router.callback_query(F.data.startswith("show_active_repair_details:"))

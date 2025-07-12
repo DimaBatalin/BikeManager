@@ -66,7 +66,6 @@ async def cleanup_old_archives():
 
     archive_repairs = json_storage.get_archive_repairs()
 
-    # Фильтруем, оставляя только те, что новее года
     recent_archive = [
         r
         for r in archive_repairs

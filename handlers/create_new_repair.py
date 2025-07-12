@@ -1,6 +1,5 @@
-from aiogram import Router, F, types
+from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 import services.storage as storage
@@ -10,7 +9,7 @@ from utils.keyboard import (
     select_bike_type_inline,
     skip_notes_inline_kb,
     confirm_total_cost_kb,
-    select_repair_source_inline,  # Импортирована новая клавиатура
+    select_repair_source_inline,
 )
 from utils.formatter import format_repair_details, parse_breakdowns_with_cost
 from fsm_states import RepairForm, EditRepairForm
@@ -45,21 +44,7 @@ def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
     return breakdowns_list, total_cost
 
 
-@router.message(F.text == "➕ Создать новый ремонт")
-@router.message(Command("add_repair"))
-@router.callback_query(F.data == "new_repair")
-@router.callback_query(F.data == "new_repair_from_empty")
-async def start_add_repair(
-    update: types.Union[Message, CallbackQuery], state: FSMContext
-):
-    """Начало процесса создания нового ремонта, запрашивает ФИО."""
-    if isinstance(update, Message):
-        await update.answer("Введите ФИО клиента:")
-    elif isinstance(update, CallbackQuery):
-        await update.message.edit_text("Введите ФИО клиента:")
-        await update.answer()
 
-    await state.set_state(RepairForm.fio)
 
 
 @router.message(RepairForm.fio)

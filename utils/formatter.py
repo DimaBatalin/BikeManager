@@ -96,16 +96,17 @@ def format_archived_repair_details(repair: Dict[str, Any]) -> str:
 
 def format_name(full_name: str) -> str:
     """Сокращает ФИО в формат 'Фамилия И.О.'"""
-    parts = full_name.split()
-    if not parts:
-        return full_name
+    # parts = full_name.split()
+    # if not parts:
+    #     return full_name
 
-    last_name = parts[0]
+    # last_name = parts[0]
 
-    initials = []
-    if len(parts) > 1:
-        initials.append(parts[1][0] + "." if parts[1] else "")
-    if len(parts) > 2:
-        initials.append(parts[2][0] + "." if parts[2] else "")
+    # initials = []
+    # if len(parts) > 1:
+    #     initials.append(parts[1][0] + "." if parts[1] else "")
+    # if len(parts) > 2:
+    #     initials.append(parts[2][0] + "." if parts[2] else "")
 
-    return f"{last_name} {' '.join(initials)}".strip()
+    # return f"{last_name} {' '.join(initials)}".strip()
+    return full_name

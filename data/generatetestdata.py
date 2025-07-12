@@ -229,10 +229,10 @@ for day in range(TOTAL_DAYS + 1):
     current_date += timedelta(days=1)
 
 # Сохранение в файлы
-with open("archive_repairs.json", "w", encoding="utf-8") as f:
+with open("data/archive_repairs.json", "w", encoding="utf-8") as f:
     json.dump(archive_repairs, f, ensure_ascii=False, indent=2)
 
-with open("active_repairs.json", "w", encoding="utf-8") as f:
+with open("data/active_repairs.json", "w", encoding="utf-8") as f:
     json.dump(active_repairs, f, ensure_ascii=False, indent=2)
 
 

@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 import services.storage as storage
 from utils.keyboard import (
@@ -15,17 +15,6 @@ router = Router()
 def register_handlers(dp):
     dp.include_router(router)
 
-
-@router.message(F.text == "Отчёты")
-async def show_report_source_filter(message: Message, state: FSMContext):
-    """
-    Сначала показывает фильтр по источнику.
-    """
-    await state.clear()
-    await message.answer(
-        "📊 Выберите категорию для формирования отчёта:",
-        reply_markup=source_filter_inline_kb(prefix="report_filter"),
-    )
 
 
 @router.callback_query(F.data.startswith("report_filter:"))

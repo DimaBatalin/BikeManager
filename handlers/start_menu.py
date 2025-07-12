@@ -11,7 +11,6 @@ router = Router()
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
     await state.set_state(state=None)
-    # Пример: присылаем текст и главное меню
     await message.answer(
         "Добро пожаловать в Mexan! Выберите раздел:", reply_markup=main_reply_kb()
     )

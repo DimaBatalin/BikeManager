@@ -209,6 +209,11 @@ def restore_repair_by_id(repair_id: int) -> bool:
         return True
 
 
+def get_repair_sources():
+    """Возвращает словарь источников ремонтов"""
+    return config.REPAIR_SOURCES
+
+
 def get_reports_data(
     period_type: str, num_periods: int, source_filter: str = "all"
 ) -> List[Dict[str, Any]]:

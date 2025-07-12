@@ -5,9 +5,18 @@ import faker
 
 # Настройки генерации
 fake = faker.Faker("ru_RU")
-START_DATE = datetime(2023, 6, 17)  # 2 года назад от 2025-06-17
-END_DATE = datetime(2025, 6, 17)
+START_DATE = datetime(2023, 7, 12)
+END_DATE = datetime(2025, 7, 12)
 TOTAL_DAYS = (END_DATE - START_DATE).days
+
+
+REPAIR_SOURCES = {
+    "friends": 0.1,
+    "avito": 0.4,
+    "outsourcing": 0.4,
+    "scooter": 0.1
+}
+
 
 # Стандартные поломки для электровелосипедов
 electro_breakdowns = [
@@ -141,9 +150,15 @@ def generate_repair_entry(repair_id, date):
     """Генерация одной записи о ремонте"""
     is_mechanics = random.choice([True, False])
 
+    sources = list(REPAIR_SOURCES.keys())
+    weights = list(REPAIR_SOURCES.values())
+    repair_type = random.choices(sources, weights=weights, k=1)[0]  
+
+
     entry = {
         "id": repair_id,
         "FIO": fake.name(),
+        "repair_type": repair_type,
         "contact": generate_contact(),
         "isMechanics": is_mechanics,
         "namebike": (

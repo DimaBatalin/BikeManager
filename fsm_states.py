@@ -29,6 +29,7 @@ class EditRepairForm(StatesGroup):
     e_bike_breakdowns_edit_custom = State()
     cost = State()
     notes = State()
+    repair_type = State()
     date = State()
     is_mechanics = State()
 

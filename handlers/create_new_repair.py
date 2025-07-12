@@ -45,7 +45,7 @@ def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
     return breakdowns_list, total_cost
 
 
-@router.message(F.text == "Добавить ремонт")
+@router.message(F.text == "➕ Создать новый ремонт")
 @router.message(Command("add_repair"))
 @router.callback_query(F.data == "new_repair")
 @router.callback_query(F.data == "new_repair_from_empty")

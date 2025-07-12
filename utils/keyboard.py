@@ -10,22 +10,23 @@ from utils.formatter import (
 from services import (
     storage,
 )
-from config import (
-    ELECTRIC_BIKE_BREAKDOWNS_PATH, REPAIR_SOURCES
-)
+from config import ELECTRIC_BIKE_BREAKDOWNS_PATH, REPAIR_SOURCES
 
 
 def main_reply_kb() -> ReplyKeyboardMarkup:
     buttons = [
-        [KeyboardButton(text="Действующие ремонты"), KeyboardButton(text="Отчёты")],
         [
-            KeyboardButton(text="Архив")
+            KeyboardButton(text="Действующие ремонты"),
+            KeyboardButton(text="➕ Создать новый ремонт"),
+        ],
+        [
+            KeyboardButton(text="Архив"),
+            KeyboardButton(text="Отчёты"),
         ],
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 
-# --- НОВАЯ ФУНКЦИЯ ---
 def select_repair_source_inline() -> InlineKeyboardMarkup:
     """
     Клавиатура для выбора источника/типа ремонта.
@@ -38,7 +39,6 @@ def select_repair_source_inline() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-# --- НОВАЯ ФУНКЦИЯ ---
 def source_filter_inline_kb(prefix: str) -> InlineKeyboardMarkup:
     """
     Клавиатура для фильтрации по источнику в архиве и отчетах.
@@ -68,6 +68,8 @@ def active_repairs_inline(active_list: list = []) -> InlineKeyboardMarkup:
                     )
                 ]
             )
+    if active_list:
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     keyboard.append(
         [
@@ -95,7 +97,7 @@ def detail_repair_inline(repair_id: str | int) -> InlineKeyboardMarkup:
 
 
 def e_bike_problems_inline(selected_problems: list = []) -> InlineKeyboardMarkup:
-    problems = storage._load(ELECTRIC_BIKE_BREAKDOWNS_PATH)
+    problems = ELECTRIC_BIKE_BREAKDOWNS_PATH
     buttons = []
     for problem in problems:
         is_selected = problem in selected_problems
@@ -132,7 +134,6 @@ def edit_repair_options_inline(repair_id: int) -> InlineKeyboardMarkup:
                 text="Контакт", callback_data=f"field:contact:{repair_id}"
             ),
         ],
-        # --- НОВАЯ КНОПКА ---
         [
             InlineKeyboardButton(
                 text="Источник", callback_data=f"field:repair_type:{repair_id}"
@@ -231,8 +232,8 @@ def archive_repair_inline(repair_id: int) -> InlineKeyboardMarkup:
 def report_options_inline_kb() -> InlineKeyboardMarkup:
     buttons = [
         [
-            InlineKeyboardButton(text="За неделю", callback_data="report_type:week"),
-            InlineKeyboardButton(text="За месяц", callback_data="report_type:month"),
+            InlineKeyboardButton(text="По неделям", callback_data="report_type:week"),
+            InlineKeyboardButton(text="По месяцям", callback_data="report_type:month"),
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -274,3 +275,24 @@ def archive_pagination_kb(
         )
     buttons.extend(archive_repair_inline(repair_id).inline_keyboard)
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def edit_repair_type_keyboard(repair_id):
+    # Создаем клавиатуру с вариантами источников
+    buttons = []
+    for key, name in storage.get_repair_sources().items():
+        buttons.append(
+            InlineKeyboardButton(
+                text=name, callback_data=f"set_repair_source:{key}:{repair_id}"
+            )
+        )
+
+    # Добавляем кнопку отмены
+    buttons.append(
+        InlineKeyboardButton(text="❌ Отмена", callback_data=f"cancel_edit:{repair_id}")
+    )
+
+    # Группируем кнопки по 2 в ряд
+    return InlineKeyboardMarkup(
+        inline_keyboard=[buttons[i : i + 2] for i in range(0, len(buttons), 2)]
+    )

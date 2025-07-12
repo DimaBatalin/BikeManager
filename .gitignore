@@ -1,5 +1,3 @@
 config.py
 __pycache__
-data/*
-data/!generatetestdata.py
 logs

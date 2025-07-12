@@ -5,7 +5,6 @@ import services.storage as storage
 from utils.keyboard import (
     main_reply_kb,
     report_options_inline_kb,
-    source_filter_inline_kb,
 )
 from fsm_states import ReportState
 

@@ -12,6 +12,7 @@ from services import (
 )
 from config import ELECTRIC_BIKE_BREAKDOWNS_PATH, REPAIR_SOURCES
 
+from re import search
 
 def main_reply_kb() -> ReplyKeyboardMarkup:
     buttons = [
@@ -99,13 +100,20 @@ def detail_repair_inline(repair_id: str | int) -> InlineKeyboardMarkup:
 def e_bike_problems_inline(selected_problems: list = []) -> InlineKeyboardMarkup:
     problems = ELECTRIC_BIKE_BREAKDOWNS_PATH
     buttons = []
+
+    base_selected = set()
+    for bd in selected_problems:
+        base = bd.rsplit(" ", 1)[0] if search(r"\s+\d+$", bd) else bd
+        base_selected.add(base)
+
     for problem in problems:
-        is_selected = problem in selected_problems
+        is_selected = problem in base_selected
         button_text = f"{'✅' if is_selected else '⬜'} {problem}"
         callback_data = f"add_e_bike_problem:{problem}"
         buttons.append(
             [InlineKeyboardButton(text=button_text, callback_data=callback_data)]
         )
+
     buttons.append(
         [
             InlineKeyboardButton(
@@ -121,6 +129,8 @@ def e_bike_problems_inline(selected_problems: list = []) -> InlineKeyboardMarkup
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 
 
 def edit_repair_options_inline(repair_id: int) -> InlineKeyboardMarkup:

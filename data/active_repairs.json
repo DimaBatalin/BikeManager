@@ -1,1 +1,860 @@
-[]
+[
+  {
+    "id": 2238,
+    "FIO": "Носов Натан Данилович",
+    "repair_type": "avito",
+    "contact": "t.me/kiseleverofe",
+    "isMechanics": true,
+    "namebike": "Cannondale Trail",
+    "date": "20.03.2025",
+    "breakdowns": [
+      "Правка обода 521",
+      "Регулировка тормозов 2358"
+    ],
+    "notes": "",
+    "calculated_cost": 2879,
+    "cost": 2879
+  },
+  {
+    "id": 2250,
+    "FIO": "Евгений Евсеевич Горбунов",
+    "repair_type": "outsourcing",
+    "contact": "ipat_61@example.com",
+    "isMechanics": true,
+    "namebike": "Ghost Kato",
+    "date": "23.03.2025",
+    "breakdowns": [
+      "Правка обода",
+      "Замена каретки",
+      "Замена педалей",
+      "Замена цепи 801"
+    ],
+    "notes": "",
+    "calculated_cost": 4768,
+    "cost": 3840
+  },
+  {
+    "id": 2303,
+    "FIO": "Ерофей Антонович Морозов",
+    "repair_type": "avito",
+    "contact": "+7 (979) 930-98-53",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "03.04.2025",
+    "breakdowns": [
+      "Правка шатунов",
+      "Замена переднего крыла",
+      "Ремонт рельс",
+      "Замена заднего крыла"
+    ],
+    "notes": "",
+    "calculated_cost": 4298,
+    "cost": 4298
+  },
+  {
+    "id": 2375,
+    "FIO": "Варвара Петровна Панова",
+    "repair_type": "avito",
+    "contact": "+7 (998) 965-39-89",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "21.04.2025",
+    "breakdowns": [
+      "Правка шатунов",
+      "Замена переднего крыла"
+    ],
+    "notes": "",
+    "calculated_cost": 2777,
+    "cost": 2777
+  },
+  {
+    "id": 2397,
+    "FIO": "Милан Владленович Журавлев",
+    "repair_type": "outsourcing",
+    "contact": "polikarp_86@example.net",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "28.04.2025",
+    "breakdowns": [
+      "Установка цепи"
+    ],
+    "notes": "Грязная цепь",
+    "calculated_cost": 1477,
+    "cost": 1477
+  },
+  {
+    "id": 2402,
+    "FIO": "Нифонт Витальевич Русаков",
+    "repair_type": "avito",
+    "contact": "pilin@example.net",
+    "isMechanics": true,
+    "namebike": "Merida Big Nine",
+    "date": "28.04.2025",
+    "breakdowns": [
+      "Правка обода 2495",
+      "Замена спиц 920",
+      "Прокол колеса"
+    ],
+    "notes": "",
+    "calculated_cost": 4344,
+    "cost": 4344
+  },
+  {
+    "id": 2411,
+    "FIO": "Артемьев Борислав Венедиктович",
+    "repair_type": "outsourcing",
+    "contact": "@alla2014",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "30.04.2025",
+    "breakdowns": [
+      "Ремонт рельс",
+      "Прокол колеса"
+    ],
+    "notes": "Проверить после ремонта",
+    "calculated_cost": 3410,
+    "cost": 3236
+  },
+  {
+    "id": 2415,
+    "FIO": "Анатолий Филатович Павлов",
+    "repair_type": "avito",
+    "contact": "ignatevmiroslav@example.net",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "02.05.2025",
+    "breakdowns": [
+      "Правка шатунов"
+    ],
+    "notes": "",
+    "calculated_cost": 985,
+    "cost": 985
+  },
+  {
+    "id": 2434,
+    "FIO": "Виноградов Ярослав Теймуразович",
+    "repair_type": "outsourcing",
+    "contact": "@nadezhda2009",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "04.05.2025",
+    "breakdowns": [
+      "Установка цепи",
+      "Ремонт рельс"
+    ],
+    "notes": "",
+    "calculated_cost": 2472,
+    "cost": 2472
+  },
+  {
+    "id": 2527,
+    "FIO": "Агафья Егоровна Ситникова",
+    "repair_type": "outsourcing",
+    "contact": "+7 (997) 824-93-38",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "06.06.2025",
+    "breakdowns": [
+      "Калибровка сенсоров",
+      "Замена проводки 2273"
+    ],
+    "notes": "",
+    "calculated_cost": 3749,
+    "cost": 3749
+  },
+  {
+    "id": 2532,
+    "FIO": "Тихонова Элеонора Харитоновна",
+    "repair_type": "scooter",
+    "contact": "t.me/praskovja2010",
+    "isMechanics": true,
+    "namebike": "Norco Storm",
+    "date": "09.06.2025",
+    "breakdowns": [
+      "Замена спиц",
+      "Замена седла 2545",
+      "Прокол колеса",
+      "Замена руля"
+    ],
+    "notes": "Ожидает запчасти",
+    "calculated_cost": 5842,
+    "cost": 5249
+  },
+  {
+    "id": 2570,
+    "FIO": "Элеонора Олеговна Константинова",
+    "repair_type": "scooter",
+    "contact": "+7 (968) 347-95-88",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "23.06.2025",
+    "breakdowns": [
+      "Ремонт седла",
+      "Правка шатунов"
+    ],
+    "notes": "",
+    "calculated_cost": 2758,
+    "cost": 2758
+  },
+  {
+    "id": 2572,
+    "FIO": "тов. Костина Зинаида Филипповна",
+    "repair_type": "avito",
+    "contact": "+7 (974) 277-62-97",
+    "isMechanics": true,
+    "namebike": "Merida Big Nine",
+    "date": "23.06.2025",
+    "breakdowns": [
+      "Правка обода 902",
+      "Обслуживание вилки 1350",
+      "Обслуживание вилки",
+      "Замена руля 2911"
+    ],
+    "notes": "Предупреждение: клиент опаздывает",
+    "calculated_cost": 6094,
+    "cost": 6094
+  },
+  {
+    "id": 2581,
+    "FIO": "Ирина Михайловна Маслова",
+    "repair_type": "outsourcing",
+    "contact": "t.me/safonovsevastjan",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "26.06.2025",
+    "breakdowns": [
+      "Прокол колеса",
+      "Ремонт седла",
+      "Проблемы с дисплеем 2804"
+    ],
+    "notes": "",
+    "calculated_cost": 4580,
+    "cost": 4580
+  },
+  {
+    "id": 2585,
+    "FIO": "Остромир Анатольевич Овчинников",
+    "repair_type": "outsourcing",
+    "contact": "prozhkov@example.com",
+    "isMechanics": true,
+    "namebike": "Stevens Super Prestige",
+    "date": "26.06.2025",
+    "breakdowns": [
+      "Замена спиц 409"
+    ],
+    "notes": "Особые пожелания клиента",
+    "calculated_cost": 409,
+    "cost": 409
+  },
+  {
+    "id": 2587,
+    "FIO": "Симонов Анатолий Борисович",
+    "repair_type": "outsourcing",
+    "contact": "naina1977@example.com",
+    "isMechanics": true,
+    "namebike": "Cannondale Trail",
+    "date": "28.06.2025",
+    "breakdowns": [
+      "Обслуживание вилки",
+      "Замена спиц",
+      "Регулировка тормозов"
+    ],
+    "notes": "",
+    "calculated_cost": 4051,
+    "cost": 5165
+  },
+  {
+    "id": 2589,
+    "FIO": "Людмила Наумовна Карпова",
+    "repair_type": "outsourcing",
+    "contact": "hristofor37@example.org",
+    "isMechanics": true,
+    "namebike": "Stevens Super Prestige",
+    "date": "01.07.2025",
+    "breakdowns": [
+      "Правка обода",
+      "Замена руля"
+    ],
+    "notes": "Срочный ремонт",
+    "calculated_cost": 2679,
+    "cost": 2679
+  },
+  {
+    "id": 2590,
+    "FIO": "Зоя Ниловна Горшкова",
+    "repair_type": "outsourcing",
+    "contact": "+7 (922) 811-13-44",
+    "isMechanics": true,
+    "namebike": "Scott Aspect",
+    "date": "01.07.2025",
+    "breakdowns": [
+      "Смазка трансмиссии",
+      "Замена каретки",
+      "Прокол колеса",
+      "Замена цепи"
+    ],
+    "notes": "",
+    "calculated_cost": 7515,
+    "cost": 7515
+  },
+  {
+    "id": 2593,
+    "FIO": "г-н Зыков Сократ Фадеевич",
+    "repair_type": "avito",
+    "contact": "fekla1976@example.org",
+    "isMechanics": true,
+    "namebike": "GT Avalanche",
+    "date": "01.07.2025",
+    "breakdowns": [
+      "Замена руля 2618"
+    ],
+    "notes": "Предупреждение: клиент опаздывает",
+    "calculated_cost": 2618,
+    "cost": 2618
+  },
+  {
+    "id": 2595,
+    "FIO": "Аскольд Васильевич Юдин",
+    "repair_type": "avito",
+    "contact": "+7 (955) 888-69-12",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "01.07.2025",
+    "breakdowns": [
+      "Прокол колеса",
+      "Ремонт рельс"
+    ],
+    "notes": "",
+    "calculated_cost": 4041,
+    "cost": 4041
+  },
+  {
+    "id": 2596,
+    "FIO": "Михеев Ираклий Евсеевич",
+    "repair_type": "outsourcing",
+    "contact": "mironovartem@example.net",
+    "isMechanics": true,
+    "namebike": "Kona Fire Mountain",
+    "date": "01.07.2025",
+    "breakdowns": [
+      "Замена спиц 978",
+      "Замена цепи 1360",
+      "Замена руля"
+    ],
+    "notes": "",
+    "calculated_cost": 4236,
+    "cost": 4236
+  },
+  {
+    "id": 2597,
+    "FIO": "Шаров Изяслав Ильясович",
+    "repair_type": "friends",
+    "contact": "t.me/rosipov",
+    "isMechanics": true,
+    "namebike": "Trek Fuel EX",
+    "date": "02.07.2025",
+    "breakdowns": [
+      "Регулировка тормозов 1456",
+      "Смазка трансмиссии 1161",
+      "Замена педалей",
+      "Замена цепи 1755"
+    ],
+    "notes": "",
+    "calculated_cost": 4975,
+    "cost": 4975
+  },
+  {
+    "id": 2598,
+    "FIO": "Валерия Никифоровна Матвеева",
+    "repair_type": "friends",
+    "contact": "arseni_1980@example.com",
+    "isMechanics": true,
+    "namebike": "Specialized Rockhopper",
+    "date": "02.07.2025",
+    "breakdowns": [
+      "Смазка трансмиссии",
+      "Обслуживание вилки 579"
+    ],
+    "notes": "Клиент заберет завтра",
+    "calculated_cost": 1513,
+    "cost": 1513
+  },
+  {
+    "id": 2600,
+    "FIO": "Харитон Ефимович Котов",
+    "repair_type": "outsourcing",
+    "contact": "sidorovalukija@example.com",
+    "isMechanics": true,
+    "namebike": "Author Solution",
+    "date": "02.07.2025",
+    "breakdowns": [
+      "Правка обода",
+      "Регулировка переключателя 861",
+      "Регулировка тормозов"
+    ],
+    "notes": "Только диагностика",
+    "calculated_cost": 3692,
+    "cost": 3692
+  },
+  {
+    "id": 2601,
+    "FIO": "Бирюкова Клавдия Матвеевна",
+    "repair_type": "friends",
+    "contact": "+7 (933) 706-76-80",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "02.07.2025",
+    "breakdowns": [
+      "Прокол колеса",
+      "Ремонт седла"
+    ],
+    "notes": "Ожидает запчасти",
+    "calculated_cost": 3518,
+    "cost": 2668
+  },
+  {
+    "id": 2602,
+    "FIO": "Владислав Августович Николаев",
+    "repair_type": "avito",
+    "contact": "+7 (916) 178-98-97",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "02.07.2025",
+    "breakdowns": [
+      "Прокачка тормоза",
+      "Калибровка сенсоров 2277"
+    ],
+    "notes": "",
+    "calculated_cost": 4201,
+    "cost": 4201
+  },
+  {
+    "id": 2604,
+    "FIO": "Феоктист Аксёнович Ефремов",
+    "repair_type": "outsourcing",
+    "contact": "+7 (907) 597-39-33",
+    "isMechanics": true,
+    "namebike": "Focus Raven",
+    "date": "04.07.2025",
+    "breakdowns": [
+      "Замена педалей",
+      "Замена руля 2455",
+      "Правка обода 917"
+    ],
+    "notes": "",
+    "calculated_cost": 4122,
+    "cost": 4122
+  },
+  {
+    "id": 2605,
+    "FIO": "Рябов Глеб Тихонович",
+    "repair_type": "outsourcing",
+    "contact": "@zuevviktor",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "04.07.2025",
+    "breakdowns": [
+      "Правка шатунов",
+      "Замена проводки"
+    ],
+    "notes": "",
+    "calculated_cost": 2467,
+    "cost": 2467
+  },
+  {
+    "id": 2611,
+    "FIO": "Селиверстова Ульяна Геннадьевна",
+    "repair_type": "avito",
+    "contact": "+7 (902) 999-52-83",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "04.07.2025",
+    "breakdowns": [
+      "Замена заднего крыла"
+    ],
+    "notes": "",
+    "calculated_cost": 2213,
+    "cost": 1834
+  },
+  {
+    "id": 2612,
+    "FIO": "Аксенова Кира Антоновна",
+    "repair_type": "outsourcing",
+    "contact": "+7 (944) 162-48-97",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "05.07.2025",
+    "breakdowns": [
+      "Правка шатунов",
+      "Ремонт рельс",
+      "Ремонт фары",
+      "Установка цепи"
+    ],
+    "notes": "Требуется диагностика",
+    "calculated_cost": 6780,
+    "cost": 8143
+  },
+  {
+    "id": 2613,
+    "FIO": "Агафонов Юрий Зиновьевич",
+    "repair_type": "outsourcing",
+    "contact": "@maksim05",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "05.07.2025",
+    "breakdowns": [
+      "Прокол колеса",
+      "Ремонт фары"
+    ],
+    "notes": "Гарантия",
+    "calculated_cost": 2845,
+    "cost": 2823
+  },
+  {
+    "id": 2614,
+    "FIO": "Лора Альбертовна Голубева",
+    "repair_type": "avito",
+    "contact": "@fotinesterov",
+    "isMechanics": true,
+    "namebike": "Author Solution",
+    "date": "05.07.2025",
+    "breakdowns": [
+      "Замена цепи",
+      "Регулировка переключателя",
+      "Замена цепи 2411"
+    ],
+    "notes": "",
+    "calculated_cost": 6744,
+    "cost": 6744
+  },
+  {
+    "id": 2615,
+    "FIO": "Щукина Нинель Валентиновна",
+    "repair_type": "avito",
+    "contact": "@mirsazonov",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "05.07.2025",
+    "breakdowns": [
+      "Установка цепи",
+      "Прокачка тормоза",
+      "Замена переднего крыла"
+    ],
+    "notes": "",
+    "calculated_cost": 3915,
+    "cost": 3319
+  },
+  {
+    "id": 2616,
+    "FIO": "Гуляева Вера Захаровна",
+    "repair_type": "outsourcing",
+    "contact": "@budimir_1970",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "06.07.2025",
+    "breakdowns": [
+      "hhg",
+      "чапр",
+      "Прокачка тормоза",
+      "Ремонт седла",
+      "Прокачка тормоза 789",
+      "Ремонт седла 550"
+    ],
+    "notes": "",
+    "calculated_cost": 1925,
+    "cost": 1339
+  },
+  {
+    "id": 2618,
+    "FIO": "Андреев Азарий Жанович",
+    "repair_type": "outsourcing",
+    "contact": "+7 (948) 568-55-17",
+    "isMechanics": true,
+    "namebike": "Cube Aim",
+    "date": "06.07.2025",
+    "breakdowns": [
+      "Правка обода",
+      "Замена цепи 696"
+    ],
+    "notes": "",
+    "calculated_cost": 2175,
+    "cost": 1703
+  },
+  {
+    "id": 2621,
+    "FIO": "Нестерова Людмила Геннадиевна",
+    "repair_type": "avito",
+    "contact": "@adamfedotov",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "06.07.2025",
+    "breakdowns": [
+      "Ремонт рельс",
+      "Ремонт фары"
+    ],
+    "notes": "",
+    "calculated_cost": 2643,
+    "cost": 1945
+  },
+  {
+    "id": 2622,
+    "FIO": "Соловьева Нонна Владимировна",
+    "repair_type": "avito",
+    "contact": "t.me/veniamin1996",
+    "isMechanics": true,
+    "namebike": "GT Avalanche",
+    "date": "06.07.2025",
+    "breakdowns": [
+      "Регулировка переключателя",
+      "Регулировка тормозов"
+    ],
+    "notes": "",
+    "calculated_cost": 2543,
+    "cost": 2543
+  },
+  {
+    "id": 2623,
+    "FIO": "Нинель Эдуардовна Данилова",
+    "repair_type": "outsourcing",
+    "contact": "sobolevavde@example.net",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "06.07.2025",
+    "breakdowns": [
+      "Прокол колеса",
+      "Установка цепи"
+    ],
+    "notes": "",
+    "calculated_cost": 2878,
+    "cost": 2878
+  },
+  {
+    "id": 2624,
+    "FIO": "Ирина Константиновна Третьякова",
+    "repair_type": "avito",
+    "contact": "lgavrilova@example.org",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "06.07.2025",
+    "breakdowns": [
+      "Ремонт седла",
+      "Прокол колеса"
+    ],
+    "notes": "",
+    "calculated_cost": 2989,
+    "cost": 2326
+  },
+  {
+    "id": 2625,
+    "FIO": "Глафира Даниловна Козлова",
+    "repair_type": "outsourcing",
+    "contact": "vladimirovdementi@example.com",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "07.07.2025",
+    "breakdowns": [
+      "Ff 400",
+      "Ремонт фары 3",
+      "Ремонт седла 33"
+    ],
+    "notes": "",
+    "calculated_cost": 2472,
+    "cost": 436
+  },
+  {
+    "id": 2628,
+    "FIO": "Логинова Надежда Андреевна",
+    "repair_type": "avito",
+    "contact": "@evdokim_2011",
+    "isMechanics": true,
+    "namebike": "Focus Raven",
+    "date": "07.07.2025",
+    "breakdowns": [
+      "Прокол колеса",
+      "Замена педалей",
+      "Правка обода",
+      "Прокол колеса"
+    ],
+    "notes": "Предупреждение: клиент опаздывает",
+    "calculated_cost": 7435,
+    "cost": 7435
+  },
+  {
+    "id": 2629,
+    "FIO": "Пимен Игнатьевич Алексеев",
+    "repair_type": "scooter",
+    "contact": "+7 (989) 979-27-65",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "07.07.2025",
+    "breakdowns": [
+      "Ремонт фары"
+    ],
+    "notes": "Особые пожелания клиента",
+    "calculated_cost": 2101,
+    "cost": 2274
+  },
+  {
+    "id": 2630,
+    "FIO": "Шестаков Никандр Харитонович",
+    "repair_type": "avito",
+    "contact": "@fedosi59",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "07.07.2025",
+    "breakdowns": [
+      "Ремонт седла",
+      "Ремонт фары",
+      "Ремонт фары",
+      "Ремонт фары"
+    ],
+    "notes": "Только диагностика",
+    "calculated_cost": 6465,
+    "cost": 6465
+  },
+  {
+    "id": 2631,
+    "FIO": "Комиссаров Аполлон Гордеевич",
+    "repair_type": "scooter",
+    "contact": "+7 (902) 818-11-41",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "07.07.2025",
+    "breakdowns": [
+      "Правка шатунов",
+      "Прокачка тормоза",
+      "Замена переднего крыла"
+    ],
+    "notes": "",
+    "calculated_cost": 3962,
+    "cost": 3962
+  },
+  {
+    "id": 2633,
+    "FIO": "Нестерова Глафира Олеговна",
+    "repair_type": "outsourcing",
+    "contact": "t.me/kalininivan",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "07.07.2025",
+    "breakdowns": [
+      "Замена заднего крыла"
+    ],
+    "notes": "",
+    "calculated_cost": 1516,
+    "cost": 1124
+  },
+  {
+    "id": 2635,
+    "FIO": "Клавдий Борисович Никифоров",
+    "repair_type": "outsourcing",
+    "contact": "t.me/tmorozov",
+    "isMechanics": true,
+    "namebike": "Scott Aspect",
+    "date": "10.07.2025",
+    "breakdowns": [
+      "Замена каретки 2881"
+    ],
+    "notes": "Ожидает запчасти",
+    "calculated_cost": 2881,
+    "cost": 2881
+  },
+  {
+    "id": 2636,
+    "FIO": "Артемьева Ольга Андреевна",
+    "repair_type": "avito",
+    "contact": "+7 (909) 580-50-93",
+    "isMechanics": true,
+    "namebike": "Author Solution",
+    "date": "10.07.2025",
+    "breakdowns": [
+      "Замена каретки 1478",
+      "Прокол колеса 542",
+      "Регулировка тормозов",
+      "Замена цепи 632"
+    ],
+    "notes": "Гарантия",
+    "calculated_cost": 3250,
+    "cost": 2652
+  },
+  {
+    "id": 2637,
+    "FIO": "Ильин Остап Гавриилович",
+    "repair_type": "avito",
+    "contact": "rjabovpavel@example.com",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "10.07.2025",
+    "breakdowns": [
+      "Ремонт рельс",
+      "Ремонт фары"
+    ],
+    "notes": "Только диагностика",
+    "calculated_cost": 2207,
+    "cost": 2207
+  },
+  {
+    "id": 2638,
+    "FIO": "тов. Трофимов Онуфрий Яковлевич",
+    "repair_type": "friends",
+    "contact": "+7 (940) 582-31-90",
+    "isMechanics": true,
+    "namebike": "Giant Anthem",
+    "date": "10.07.2025",
+    "breakdowns": [
+      "Замена каретки 1532",
+      "Замена каретки",
+      "Замена каретки",
+      "Замена руля 1972"
+    ],
+    "notes": "",
+    "calculated_cost": 6282,
+    "cost": 6282
+  },
+  {
+    "id": 2639,
+    "FIO": "тов. Зуева Прасковья Тарасовна",
+    "repair_type": "avito",
+    "contact": "juli82@example.net",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "10.07.2025",
+    "breakdowns": [
+      "Ремонт рельс",
+      "Ремонт рельс"
+    ],
+    "notes": "Предупреждение: клиент опаздывает",
+    "calculated_cost": 4198,
+    "cost": 3475
+  },
+  {
+    "id": 2640,
+    "FIO": "Авдеева Елена Эльдаровна",
+    "repair_type": "outsourcing",
+    "contact": "+7 (980) 315-10-65",
+    "isMechanics": true,
+    "namebike": "Cube Aim",
+    "date": "10.07.2025",
+    "breakdowns": [
+      "Обслуживание вилки",
+      "Регулировка переключателя 2458",
+      "Замена спиц"
+    ],
+    "notes": "",
+    "calculated_cost": 8370,
+    "cost": 2458
+  },
+  {
+    "id": 2523,
+    "FIO": "Таисия Степановна Кондратьева",
+    "repair_type": "friends",
+    "contact": "t.me/tihon75",
+    "isMechanics": false,
+    "namebike": "Электровелосипед",
+    "date": "06.06.2025",
+    "breakdowns": [],
+    "notes": "Нужна замена детали",
+    "calculated_cost": 8240,
+    "cost": 0
+  }
+]

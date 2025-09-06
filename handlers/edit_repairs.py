@@ -98,21 +98,27 @@ async def select_field_to_edit(callback: CallbackQuery, state: FSMContext):
                 f"(например: 'Порвана цепь 500, Прокол колеса 200').\n"
                 f"Текущие поломки: <code>{current_breakdowns_str if current_breakdowns_str else '-'}</code>:"
             )
-        else:  # Если электровелосипед
+        else:  # Электровелосипед
             await state.set_state(EditRepairForm.e_bike_breakdowns_edit_select)
             current_breakdowns = current_repair_data.get("breakdowns", [])
+
+            # Приводим к базовым названиям (чтобы галочки работали и для "с ценой")
+            base_breakdowns = []
+            for bd in current_breakdowns:
+                base = bd.rsplit(" ", 1)[0] if search(r"\s+\d+$", bd) else bd
+                base_breakdowns.append(base)
+
             await state.update_data(
                 temp_breakdowns=current_breakdowns[:],
             )
-            standard_breakdowns = [
-                b for b in current_breakdowns if not search(r"\s+\d+$", b)
-            ]
+
             await callback.message.edit_text(
                 "Выберите стандартные поломки для электровелосипеда или введите свои (текущие поломки ниже):\n\n"
-                + ", ".join(current_repair_data.get("breakdowns", []))
+                + ", ".join(current_breakdowns)
                 + "\n\n",
-                reply_markup=e_bike_problems_inline(standard_breakdowns),
+                reply_markup=e_bike_problems_inline(base_breakdowns),
             )
+
     elif field_name == "cost":
         await state.set_state(EditRepairForm.cost)
         current_cost = current_repair_data.get("cost", 0)
@@ -162,17 +168,33 @@ async def edit_e_bike_problem_select(callback: CallbackQuery, state: FSMContext)
     user_data = await state.get_data()
     temp_breakdowns = user_data.get("temp_breakdowns", [])
 
-    if problem_text in temp_breakdowns:
-        temp_breakdowns.remove(problem_text)
+    is_present = any(
+        bd == problem_text or bd.startswith(problem_text + " ")
+        for bd in temp_breakdowns
+    )
+
+    if is_present:
+        temp_breakdowns = [
+            bd for bd in temp_breakdowns
+            if not (bd == problem_text or bd.startswith(problem_text + " "))
+        ]
     else:
         temp_breakdowns.append(problem_text)
-
+    
     await state.update_data(temp_breakdowns=temp_breakdowns)
-    standard_breakdowns = [b for b in temp_breakdowns if not search(r"\s+\d+$", b)]
 
-    await callback.message.edit_reply_markup(
-        reply_markup=e_bike_problems_inline(standard_breakdowns)
-    )
+    base_selected = []
+    for bd in temp_breakdowns:
+        base = bd.rsplit(" ", 1)[0] if search(r"\s+\d+$", bd) else bd
+        base_selected.append(base)
+
+    new_markup = e_bike_problems_inline(base_selected)
+
+    if callback.message.reply_markup != new_markup:
+        await callback.message.edit_reply_markup(reply_markup=new_markup)
+    
+    await callback.answer()
+
 
 
 @router.callback_query(
@@ -200,7 +222,6 @@ async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMCont
     text = message.text
     user_data = await state.get_data()
     repair_id = user_data.get("repair_id_to_edit")
-    temp_breakdowns = user_data.get("temp_breakdowns", [])
 
     if repair_id is None:
         await message.answer(
@@ -210,13 +231,25 @@ async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMCont
         await state.clear()
         return
 
-    standard_selections = [b for b in temp_breakdowns if not search(r"\s+\d+$", b)]
-    custom_breakdowns_list, _ = [], 0
-    if text != "-":
-        custom_breakdowns_list, _ = parse_breakdowns_with_cost(text)
-    final_breakdowns = standard_selections + custom_breakdowns_list
+    if text == "-":
+        # Пользователь решил оставить только стандартные (галочками)
+        final_breakdowns = user_data.get("temp_breakdowns", [])
+    else:
+        # Полностью заменяем список (как у механических)
+        final_breakdowns, _ = parse_breakdowns_with_cost(text)
+
+    # --- Убираем дубли и объединяем стандартную и ту же поломку с ценой ---
+    normalized = {}
+    for bd in final_breakdowns:
+        base = bd.rsplit(" ", 1)[0] if search(r"\s+\d+$", bd) else bd
+        normalized[base] = bd  # если есть цена — перезапишет «голую» поломку
+
+    final_breakdowns = list(normalized.values())
+
+    # Сохраняем
     storage.update_repair_field(repair_id, "breakdowns", final_breakdowns)
 
+    # Считаем итоговую стоимость
     total_cost_from_breakdowns = 0
     for bd in final_breakdowns:
         match = search(r"\s+(\d+)$", bd)
@@ -240,7 +273,7 @@ async def process_edit_e_bike_custom_breakdowns(message: Message, state: FSMCont
 async def finish_edit_e_bike_selection(callback: CallbackQuery, state: FSMContext):
     user_data = await state.get_data()
     repair_id = user_data.get("repair_id_to_edit")
-    final_breakdowns = user_data.get("temp_breakdowns", [])
+    temp_breakdowns = user_data.get("temp_breakdowns", [])
 
     if repair_id is None:
         await callback.message.answer(
@@ -250,7 +283,16 @@ async def finish_edit_e_bike_selection(callback: CallbackQuery, state: FSMContex
         await state.clear()
         return
 
+    # --- Убираем дубли и объединяем стандартную и ту же поломку с ценой ---
+    normalized = {}
+    for bd in temp_breakdowns:
+        base = bd.rsplit(" ", 1)[0] if search(r"\s+\d+$", bd) else bd
+        normalized[base] = bd
+
+    final_breakdowns = list(normalized.values())
+
     storage.update_repair_field(repair_id, "breakdowns", final_breakdowns)
+
     total_cost_from_breakdowns = 0
     for bd in final_breakdowns:
         match = search(r"\s+(\d+)$", bd)
@@ -266,9 +308,6 @@ async def finish_edit_e_bike_selection(callback: CallbackQuery, state: FSMContex
         reply_markup=confirm_total_cost_kb(total_cost_from_breakdowns),
     )
     await callback.answer()
-
-
-# ---- НОВЫЙ БЛОК ДЛЯ ОБРАБОТКИ СТОИМОСТИ ПРИ РЕДАКТИРОВАНИИ ----
 
 
 @router.message(EditRepairForm.breakdowns)

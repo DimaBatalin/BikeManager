@@ -1,5 +1,3 @@
-# services/reports.py
-
 from datetime import datetime, timedelta
 from calendar import monthrange
 

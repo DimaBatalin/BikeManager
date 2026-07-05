@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -12,11 +14,13 @@ from utils.keyboard import (
     confirm_total_cost_kb,
     edit_repair_type_keyboard,
 )
-from utils.formatter import format_repair_details, parse_breakdowns_with_cost
+from utils.formatter import format_repair_details, parse_breakdowns_with_cost, mask_contact
 from fsm_states import EditRepairForm
 
 from re import search
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -147,6 +151,12 @@ async def set_repair_source(callback: CallbackQuery, state: FSMContext):
     repair_id = int(data_parts[2])
 
     storage.update_repair_field(repair_id, "repair_type", source_key)
+    logger.info(
+        "Источник ремонта ID:%s изменён на '%s'. user_id=%s.",
+        repair_id,
+        source_key,
+        callback.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(repair_id)
     sources_dict = storage.get_repair_sources()
     source_name = sources_dict.get(source_key, source_key)
@@ -319,6 +329,11 @@ async def process_edit_mechanical_breakdowns(message: Message, state: FSMContext
     user_data = await state.get_data()
     repair_id = user_data.get("repair_id_to_edit")
     storage.update_repair_field(repair_id, "breakdowns", parsed_breakdowns)
+    logger.info(
+        "Поломки обновлены для ремонта ID:%s (механический). user_id=%s.",
+        repair_id,
+        message.from_user.id,
+    )
 
     await state.update_data(calculated_cost=calculated_cost)
     await state.set_state(EditRepairForm.cost)
@@ -348,6 +363,12 @@ async def process_confirm_cost_edit(callback: CallbackQuery, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "cost", cost)
+    logger.info(
+        "Стоимость ремонта ID:%s подтверждена/обновлена на %s руб. user_id=%s.",
+        repair_id,
+        cost,
+        callback.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(int(repair_id))
 
     await callback.message.edit_text(
@@ -369,11 +390,18 @@ async def process_enter_custom_cost_edit(callback: CallbackQuery, state: FSMCont
 @router.message(EditRepairForm.cost)
 async def process_cost_input_edit(message: Message, state: FSMContext):
     """Обрабатывает ручной ввод стоимости при редактировании."""
-    try:
-        cost = int(message.text)
-    except ValueError:
-        await message.answer("Пожалуйста, введите числовое значение стоимости.")
+    raw = (message.text or "").strip()
+    if not raw.isdigit() or int(raw) <= 0:
+        logger.warning(
+            "Некорректная стоимость при редактировании от user_id=%s: %r",
+            message.from_user.id,
+            message.text,
+        )
+        await message.answer(
+            "Пожалуйста, введите положительное числовое значение стоимости."
+        )
         return
+    cost = int(raw)
 
     user_data = await state.get_data()
     repair_id = user_data.get("repair_id_to_edit")
@@ -385,6 +413,12 @@ async def process_cost_input_edit(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "cost", cost)
+    logger.info(
+        "Стоимость ремонта ID:%s обновлена на %s руб. user_id=%s.",
+        repair_id,
+        cost,
+        message.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(int(repair_id))
 
     await message.answer(
@@ -410,6 +444,11 @@ async def update_fio(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "FIO", message.text)
+    logger.info(
+        "ФИО клиента обновлено для ремонта ID:%s. user_id=%s.",
+        repair_id,
+        message.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ ФИО обновлено для ремонта ID: {repair_id}.\n\n"
@@ -431,6 +470,12 @@ async def update_contact(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "contact", message.text)
+    logger.info(
+        "Контакт обновлён для ремонта ID:%s (новое значение: %s). user_id=%s.",
+        repair_id,
+        mask_contact(message.text),
+        message.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Контакт обновлен для ремонта ID: {repair_id}.\n\n"
@@ -462,6 +507,12 @@ async def update_bike_type(callback: CallbackQuery, state: FSMContext):
     if not is_mechanics:
         storage.update_repair_field(repair_id, "namebike", "Электровелосипед")
 
+    logger.info(
+        "Тип велосипеда обновлён для ремонта ID:%s -> isMechanics=%s. user_id=%s.",
+        repair_id,
+        is_mechanics,
+        callback.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(int(repair_id))
     await callback.message.edit_text(
         f"✅ Тип велосипеда обновлен для ремонта ID: {repair_id}.\n\n"
@@ -484,6 +535,11 @@ async def update_namebike(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "namebike", message.text)
+    logger.info(
+        "Название велосипеда обновлено для ремонта ID:%s. user_id=%s.",
+        repair_id,
+        message.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Название велосипеда обновлено для ремонта ID: {repair_id}.\n\n"
@@ -505,6 +561,11 @@ async def update_notes(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "notes", message.text)
+    logger.info(
+        "Примечания обновлены для ремонта ID:%s. user_id=%s.",
+        repair_id,
+        message.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Примечания обновлены для ремонта ID: {repair_id}.\n\n"
@@ -534,6 +595,12 @@ async def update_date(message: Message, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "date", message.text)
+    logger.info(
+        "Дата ремонта ID:%s обновлена на %s. user_id=%s.",
+        repair_id,
+        message.text,
+        message.from_user.id,
+    )
     repair = storage.get_active_repair_data_by_id(int(repair_id))
     await message.answer(
         f"✅ Дата обновлена для ремонта ID: {repair_id}.\n\n"
@@ -570,11 +637,21 @@ async def close_repair(callback: CallbackQuery, state: FSMContext):
             return
 
         if storage.archive_repair_by_id(repair_id):
+            logger.info(
+                "Ремонт ID:%s закрыт и перемещён в архив. user_id=%s.",
+                repair_id,
+                callback.from_user.id,
+            )
             await callback.message.answer(
                 f"Ремонт ID: {repair_id} успешно закрыт и перемещен в архив.",
                 reply_markup=main_reply_kb(),
             )
         else:
+            logger.warning(
+                "Не удалось закрыть ремонт ID:%s (не найден или уже в архиве). user_id=%s.",
+                repair_id,
+                callback.from_user.id,
+            )
             await callback.message.answer(
                 "Не удалось закрыть ремонт. Возможно, он уже в архиве или не существует."
             )

@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router, F, types
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
@@ -11,11 +13,38 @@ from utils.keyboard import (
 )
 from fsm_states import RepairForm
 
+logger = logging.getLogger(__name__)
+
 router = Router()
 
 
 def register_handlers(dp):
     dp.include_router(router)
+
+
+@router.message(Command("cancel"))
+async def cmd_cancel(message: Message, state: FSMContext):
+    """
+    Сбрасывает текущее состояние FSM (отменяет любой незавершённый диалог:
+    создание/редактирование ремонта, ввод суммы фиктивного ремонта и т.д.).
+    Устраняет "утечку" данных формы, которая иначе осталась бы висеть
+    в памяти состояния до следующего валидного ввода.
+    """
+    current_state = await state.get_state()
+    await state.clear()
+    if current_state is None:
+        await message.answer(
+            "Нечего отменять — активных диалогов нет.", reply_markup=main_reply_kb()
+        )
+    else:
+        logger.info(
+            "Диалог отменён пользователем (было состояние %s). user_id=%s.",
+            current_state,
+            message.from_user.id,
+        )
+        await message.answer(
+            "❌ Действие отменено.", reply_markup=main_reply_kb()
+        )
 
 
 @router.message(Command("start"))

@@ -27,6 +27,8 @@ handler.setFormatter(
 # Настраиваем корневой логгер
 logging.basicConfig(level=logging.INFO, handlers=[handler, logging.StreamHandler()])
 
+logger = logging.getLogger(__name__)
+
 bot = Bot(
     token=config.TG_TOKEN,
     default=DefaultBotProperties(parse_mode="HTML"),
@@ -61,25 +63,38 @@ dp.include_router(reports_router)
 
 async def cleanup_old_archives():
     """Удаляет из архива записи старше одного года."""
-    logging.info("Запуск очистки старых архивов...")
+    logger.info("Запуск очистки старых архивов...")
     one_year_ago = datetime.now() - timedelta(days=365)
 
     archive_repairs = json_storage.get_archive_repairs()
 
-    recent_archive = [
-        r
-        for r in archive_repairs
-        if datetime.strptime(r.get("archive_date", "01.01.1970"), "%d.%m.%Y")
-        > one_year_ago
-    ]
+    recent_archive = []
+    for r in archive_repairs:
+        archive_date_str = r.get("archive_date", "01.01.1970")
+        try:
+            archive_date = datetime.strptime(archive_date_str, "%d.%m.%Y")
+        except ValueError:
+            # Некорректная/повреждённая дата — не удаляем запись молча,
+            # а сохраняем её и логируем предупреждение, чтобы данные
+            # не терялись из-за некорректного формата даты.
+            logger.warning(
+                "Некорректная дата архивации %r у ремонта ID:%s — запись сохранена без изменений.",
+                archive_date_str,
+                r.get("id"),
+            )
+            recent_archive.append(r)
+            continue
+        if archive_date > one_year_ago:
+            recent_archive.append(r)
 
     if len(recent_archive) < len(archive_repairs):
         json_storage.update_archive_repairs(recent_archive)
-        logging.info(
-            f"Очистка завершена. Удалено {len(archive_repairs) - len(recent_archive)} старых записей."
+        logger.info(
+            "Очистка завершена. Удалено %s старых записей.",
+            len(archive_repairs) - len(recent_archive),
         )
     else:
-        logging.info("Старых записей для удаления не найдено.")
+        logger.info("Старых записей для удаления не найдено.")
 
 
 async def main():
@@ -87,11 +102,11 @@ async def main():
 
     while True:
         try:
-            logging.info("Бот запускается...")
+            logger.info("Бот запускается...")
             await dp.start_polling(bot)
-        except Exception as e:
-            logging.error(f"Произошла критическая ошибка: {e}")
-            logging.info("Перезапуск через 10 секунд...")
+        except Exception:
+            logger.exception("Произошла критическая ошибка при работе бота.")
+            logger.info("Перезапуск через 10 секунд...")
             await asyncio.sleep(10)
 
 

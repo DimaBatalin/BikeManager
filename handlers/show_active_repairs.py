@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
@@ -7,6 +9,8 @@ from utils.keyboard import (
     detail_repair_inline,
 )
 from utils.formatter import format_repair_details
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 

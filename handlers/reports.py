@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -7,6 +9,8 @@ from utils.keyboard import (
     report_options_inline_kb,
 )
 from fsm_states import ReportState
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -58,6 +62,12 @@ async def generate_report(callback: CallbackQuery, state: FSMContext):
 
     # Передаем фильтр в функцию
     reports_data = storage.get_reports_data(period_type, num_periods, source_filter)
+    logger.info(
+        "Сформирован отчёт (%s, фильтр=%s). user_id=%s.",
+        period_type,
+        source_filter,
+        callback.from_user.id,
+    )
 
     if not reports_data or all(report["bike_count"] == 0 for report in reports_data):
         await callback.message.edit_text(
@@ -99,7 +109,7 @@ async def generate_report(callback: CallbackQuery, state: FSMContext):
             current_message_batch += part
 
     if current_message_batch:
-        if callback.message.text.startswith("⏳"):
+        if (callback.message.text or "").startswith("⏳"):
             await callback.message.edit_text(current_message_batch)
         else:
             await callback.message.answer(

@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -11,6 +13,8 @@ from utils.keyboard import (
 from datetime import datetime
 
 from fsm_states import EditArchiveForm
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -96,11 +100,21 @@ async def restore_repair(callback: CallbackQuery):
     restored = storage.restore_repair_by_id(repair_id)
 
     if restored:
+        logger.info(
+            "Ремонт ID:%s восстановлен из архива в активные. user_id=%s.",
+            repair_id,
+            callback.from_user.id,
+        )
         await callback.message.answer(
             f"Ремонт ID: {repair_id} восстановлен и перемещен в активные.",
             reply_markup=main_reply_kb(),
         )
     else:
+        logger.warning(
+            "Не удалось восстановить ремонт ID:%s (не найден в архиве). user_id=%s.",
+            repair_id,
+            callback.from_user.id,
+        )
         await callback.message.answer(
             f"Не удалось восстановить ремонт ID: {repair_id}. Возможно, он не найден в архиве.",
             reply_markup=main_reply_kb(),
@@ -119,8 +133,18 @@ async def delete_repair(callback: CallbackQuery):
     deleted = storage.delete_repair_from_archive_by_id(repair_id)
 
     if deleted:
+        logger.warning(
+            "Ремонт ID:%s безвозвратно удалён из архива. user_id=%s.",
+            repair_id,
+            callback.from_user.id,
+        )
         await callback.message.edit_text(f"Ремонт ID: {repair_id} был удален навсегда.")
     else:
+        logger.warning(
+            "Не удалось удалить ремонт ID:%s (не найден в архиве). user_id=%s.",
+            repair_id,
+            callback.from_user.id,
+        )
         await callback.message.answer("Не удалось удалить ремонт.")
 
     await callback.answer()
@@ -165,10 +189,21 @@ async def process_new_archive_date(message: Message, state: FSMContext):
     )
 
     if updated:
+        logger.info(
+            "Дата архивации ремонта ID:%s обновлена на %s. user_id=%s.",
+            repair_id,
+            new_date_str,
+            message.from_user.id,
+        )
         await message.answer(
             f"Дата архивации для ремонта ID:{repair_id} обновлена на {new_date_str}."
         )
     else:
+        logger.warning(
+            "Не удалось обновить дату архивации для ремонта ID:%s. user_id=%s.",
+            repair_id,
+            message.from_user.id,
+        )
         await message.answer("Не удалось обновить дату.")
 
     await state.clear()

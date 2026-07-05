@@ -1,41 +1,83 @@
 import json
+import logging
 import threading
 from pathlib import Path
 from datetime import datetime, timedelta, date
 import config
 import calendar
 import locale
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-try:
-    locale.setlocale(locale.LC_ALL, "ru_RU.UTF-8")
-except locale.Error:
+logger = logging.getLogger(__name__)
+
+# Пытаемся установить русскую локаль для названий месяцев в отчётах.
+# Если ни один из вариантов не доступен на текущей ОС — просто логируем
+# предупреждение и продолжаем работу с локалью по умолчанию (месяцы
+# в этом случае будут отображаться на английском, но бот не упадёт).
+_LOCALE_CANDIDATES = ("ru_RU.UTF-8", "Russian_Russia.1251", "ru_RU", "ru_RU.CP1251")
+for _locale_name in _LOCALE_CANDIDATES:
     try:
-        locale.setlocale(locale.LC_ALL, "Russian_Russia.1251")
+        locale.setlocale(locale.LC_ALL, _locale_name)
+        break
     except locale.Error:
-        print("Не удалось установить русскую локаль. Месяцы будут на английском.")
+        continue
+else:
+    logger.warning(
+        "Не удалось установить русскую локаль (пробовали: %s). "
+        "Названия месяцев в отчётах будут отображаться на английском.",
+        ", ".join(_LOCALE_CANDIDATES),
+    )
+
+# RLock (а не Lock), т.к. некоторые функции внутри lock вызывают
+# внутренние хелперы, которые тоже могут захватывать блокировку
+# (например атомарное создание ремонта с новым ID).
+lock = threading.RLock()
 
 
-lock = threading.Lock()
-
-
-def _load(path: Path):
+def _load(path: Path) -> list:
     """
     Загружает данные из JSON файла по указанному пути.
-    Возвращает пустой список, если файл не существует.
+    Возвращает пустой список, если файл не существует, повреждён
+    или недоступен для чтения — чтобы бот не падал целиком из-за
+    проблем с одним файлом хранилища.
     """
     if not path.exists():
         return []
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        logger.exception("Файл %s повреждён (невалидный JSON).", path)
+        return []
+    except OSError:
+        logger.exception("Не удалось прочитать файл %s.", path)
+        return []
+
+    if not isinstance(data, list):
+        logger.error(
+            "Файл %s содержит неожиданный формат данных (ожидался список).", path
+        )
+        return []
+    return data
 
 
-def _save(path: Path, data):
+def _save(path: Path, data) -> bool:
     """
     Сохраняет данные в JSON файл по указанному пути.
+    Пишет во временный файл и атомарно переименовывает его в целевой,
+    чтобы при сбое посреди записи не повредить существующие данные.
+    Возвращает True при успехе, False при ошибке записи.
     """
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tmp_path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        tmp_path.replace(path)
+        return True
+    except OSError:
+        logger.exception("Не удалось сохранить файл %s.", path)
+        return False
 
 
 def get_active_repairs() -> list:
@@ -68,30 +110,60 @@ def update_archive_repairs(all_repairs: list):
         _save(config.ARCHIVE_PATH, all_repairs)
 
 
+def _get_next_repair_id_unlocked() -> int:
+    """
+    Внутренний хелпер: вычисляет следующий ID БЕЗ захвата блокировки.
+    Вызывающий код обязан сам держать `lock`.
+    """
+    active_repairs = _load(config.ACTIVE_PATH)
+    archive_repairs = _load(config.ARCHIVE_PATH)
+    all_ids = [
+        r.get("id", 0)
+        for r in active_repairs + archive_repairs
+        if isinstance(r.get("id"), int)
+    ]
+    return max(all_ids) + 1 if all_ids else 1
+
+
 def get_next_repair_id() -> int:
     """
     Генерирует следующий доступный ID для нового ремонта.
     Ищет максимальный ID среди активных и архивных ремонтов.
+
+    ВНИМАНИЕ: если между вызовом этой функции и последующим add_repair()
+    может произойти конкурентная запись — используйте create_repair(),
+    которая делает обе операции атомарно под одной блокировкой.
     """
     with lock:
-        active_repairs = _load(config.ACTIVE_PATH)
-        archive_repairs = _load(config.ARCHIVE_PATH)
-        all_ids = [
-            r.get("id", 0)
-            for r in active_repairs + archive_repairs
-            if isinstance(r.get("id"), int)
-        ]
-        return max(all_ids) + 1 if all_ids else 1
+        return _get_next_repair_id_unlocked()
 
 
-def add_repair(repair_dict: dict):
+def add_repair(repair_dict: dict) -> bool:
     """
-    Добавляет новый ремонт в список активных.
+    Добавляет новый ремонт (с уже проставленным ID) в список активных.
+    Возвращает True при успешном сохранении.
     """
     with lock:
         data = _load(config.ACTIVE_PATH)
         data.append(repair_dict)
+        return _save(config.ACTIVE_PATH, data)
+
+
+def create_repair(repair_dict: dict) -> int:
+    """
+    Атомарно генерирует новый ID и добавляет ремонт в активные,
+    под одной блокировкой — устраняет гонку между
+    get_next_repair_id() и add_repair(), при которой два
+    параллельных запроса могли бы получить одинаковый ID.
+    Возвращает присвоенный ID.
+    """
+    with lock:
+        new_id = _get_next_repair_id_unlocked()
+        repair_dict["id"] = new_id
+        data = _load(config.ACTIVE_PATH)
+        data.append(repair_dict)
         _save(config.ACTIVE_PATH, data)
+        return new_id
 
 
 def archive_repair_by_id(rid: int) -> bool:
@@ -122,7 +194,7 @@ def archive_repair_by_id(rid: int) -> bool:
         return True
 
 
-def get_active_repair_data_by_id(repair_id: int) -> dict | None:
+def get_active_repair_data_by_id(repair_id: int) -> Optional[dict]:
     """
     Возвращает данные активного ремонта по его ID.
     Возвращает None, если ремонт не найден.
@@ -134,7 +206,7 @@ def get_active_repair_data_by_id(repair_id: int) -> dict | None:
     return None
 
 
-def update_repair_field(repair_id: int, field_name: str, new_value):
+def update_repair_field(repair_id: int, field_name: str, new_value) -> bool:
     """
     Обновляет указанное поле у ремонта с заданным ID.
     Работает только для активных ремонтов.
@@ -148,8 +220,8 @@ def update_repair_field(repair_id: int, field_name: str, new_value):
                 updated = True
                 break
         if updated:
-            _save(config.ACTIVE_PATH, active_repairs)
-        return updated
+            return _save(config.ACTIVE_PATH, active_repairs)
+        return False
 
 
 def get_archived_repairs_last_two_months(source_filter: str = "all") -> list:
@@ -165,15 +237,20 @@ def get_archived_repairs_last_two_months(source_filter: str = "all") -> list:
         if archive_date_str:
             try:
                 archive_date = datetime.strptime(archive_date_str, "%d.%m.%Y")
-                if archive_date >= two_months_ago:
-                    # Применяем фильтр, если он не 'all'
-                    if (
-                        source_filter == "all"
-                        or repair.get("repair_type") == source_filter
-                    ):
-                        recent_repairs.append(repair)
             except ValueError:
+                logger.warning(
+                    "Некорректная дата архивации %r у ремонта ID:%s — запись пропущена.",
+                    archive_date_str,
+                    repair.get("id"),
+                )
                 continue
+            if archive_date >= two_months_ago:
+                # Применяем фильтр, если он не 'all'
+                if (
+                    source_filter == "all"
+                    or repair.get("repair_type") == source_filter
+                ):
+                    recent_repairs.append(repair)
     return recent_repairs
 
 
@@ -235,24 +312,7 @@ def get_reports_data(
     today = datetime.now().date()
 
     if period_type == "week":
-        # current_weekday = today.weekday() # 0 for Monday, 6 for Sunday
-        # current_week_start = today - timedelta(days=current_weekday)
-
-        # Changed to iterate backwards from today, and find the start/end of the week
-        # This aligns better with "9-14, 2-8, 26-1, 19-25" example from user
         for i in range(num_periods):
-            # Calculate the end of the current week (Sunday)
-            # Example: if today is Friday (weekday=4), and we want this week's end (Sunday), add 2 days.
-            # (6 - today.weekday()) gives days to Sunday
-            # current_week_end = today + timedelta(days=6 - today.weekday())
-            # This logic will find the current week, then the previous full weeks.
-
-            # To get "9-14, 2-8, 26-1, 19-25" style:
-            # We need to find the Sunday of the *current* week, then subtract weeks.
-            # today.weekday() gives 0 (Mon) to 6 (Sun).
-            # To get to the end of the *current* week (Sunday): (6 - today.weekday()) days
-            # To get to the start of the *current* week (Monday): today.weekday() days back
-
             # Find the Sunday of the current week
             current_sunday = today + timedelta(days=6 - today.weekday())
 
@@ -271,12 +331,18 @@ def get_reports_data(
                         arch_date = datetime.strptime(
                             archive_date_str, "%d.%m.%Y"
                         ).date()
-                        if week_start <= arch_date <= week_end:
-                            period_repairs.append(repair)
-                            total_cost += repair.get("cost", 0)
-                            bike_count += 1
                     except ValueError:
+                        logger.warning(
+                            "Некорректная дата архивации %r у ремонта ID:%s "
+                            "при формировании недельного отчёта — запись пропущена.",
+                            archive_date_str,
+                            repair.get("id"),
+                        )
                         continue
+                    if week_start <= arch_date <= week_end:
+                        period_repairs.append(repair)
+                        total_cost += repair.get("cost", 0)
+                        bike_count += 1
 
             reports.append(
                 {
@@ -321,12 +387,18 @@ def get_reports_data(
                         arch_date = datetime.strptime(
                             archive_date_str, "%d.%m.%Y"
                         ).date()
-                        if month_start <= arch_date <= month_end:
-                            period_repairs.append(repair)
-                            total_cost += repair.get("cost", 0)
-                            bike_count += 1
                     except ValueError:
+                        logger.warning(
+                            "Некорректная дата архивации %r у ремонта ID:%s "
+                            "при формировании месячного отчёта — запись пропущена.",
+                            archive_date_str,
+                            repair.get("id"),
+                        )
                         continue
+                    if month_start <= arch_date <= month_end:
+                        period_repairs.append(repair)
+                        total_cost += repair.get("cost", 0)
+                        bike_count += 1
 
             reports.append(
                 {
@@ -344,7 +416,7 @@ def get_reports_data(
     return reports
 
 
-def update_archive_repair_field(repair_id: int, field_name: str, new_value):
+def update_archive_repair_field(repair_id: int, field_name: str, new_value) -> bool:
     """
     Обновляет указанное поле у ремонта в АРХИВЕ.
     """
@@ -357,8 +429,8 @@ def update_archive_repair_field(repair_id: int, field_name: str, new_value):
                 updated = True
                 break
         if updated:
-            _save(config.ARCHIVE_PATH, archive_repairs)
-        return updated
+            return _save(config.ARCHIVE_PATH, archive_repairs)
+        return False
 
 
 def delete_repair_from_archive_by_id(repair_id: int) -> bool:
@@ -373,6 +445,5 @@ def delete_repair_from_archive_by_id(repair_id: int) -> bool:
         archive_filtered = [r for r in archive if r.get("id") != repair_id]
 
         if len(archive_filtered) < original_length:
-            _save(config.ARCHIVE_PATH, archive_filtered)
-            return True
+            return _save(config.ARCHIVE_PATH, archive_filtered)
         return False

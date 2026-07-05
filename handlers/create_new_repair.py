@@ -1,5 +1,8 @@
+import logging
+
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 
 import services.storage as storage
@@ -11,11 +14,12 @@ from utils.keyboard import (
     confirm_total_cost_kb,
     select_repair_source_inline,
 )
-from utils.formatter import format_repair_details, parse_breakdowns_with_cost
-from fsm_states import RepairForm, EditRepairForm
+from utils.formatter import format_repair_details, parse_breakdowns_with_cost, mask_contact
+from fsm_states import RepairForm, EditRepairForm, FakeRepairForm
 
-import re
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -24,27 +28,115 @@ def register_handlers(dp):
     dp.include_router(router)
 
 
-def parse_breakdowns_with_cost(text: str) -> tuple[list[str], int]:
+# --- ПУНКТ 1: Быстрое добавление фиктивного ремонта на произвольную сумму ---
+#
+# Реализовано как команда /fake_repair с необязательным аргументом-суммой:
+#   - "/fake_repair 1500"  -> ремонт создаётся сразу, без лишних вопросов.
+#   - "/fake_repair"       -> бот переходит в отдельное FSM-состояние
+#     FakeRepairForm.waiting_for_amount и просит ввести сумму следующим сообщением.
+#
+# Такой гибридный подход выбран, чтобы:
+#   1) не создавать отдельную полноценную FSM-форму там, где нужен один шаг;
+#   2) при этом поддержать удобный сценарий "написал команду без аргумента —
+#      бот сам спросит сумму", а не просто ругаться на отсутствие аргумента.
+# Остальные поля (FIO, contact, namebike, breakdowns, notes) заполняются
+# заглушками, а repair_type жёстко выставляется в "quick", чтобы такие
+# ремонты было легко отличить в отчётах/архиве.
+
+FAKE_REPAIR_DEFAULTS = {
+    "FIO": "Без имени",
+    "contact": "-",
+    "namebike": "-",
+    "breakdowns": [],
+    "notes": "Быстрый ремонт",
+    "repair_type": "quick",
+    "isMechanics": True,
+}
+
+
+def _parse_amount(raw: str) -> int | None:
     """
-    Разбирает строку с поломками и их стоимостью.
-    Пример: 'Ремонт колеса 500, замена цепи 1200'
-    Возвращает список строк поломок и общую стоимость.
+    Валидирует введённую сумму: должна быть целым положительным числом.
+    Возвращает int или None, если ввод некорректен.
     """
-    breakdowns_list = []
-    total_cost = 0
-    parts = [part.strip() for part in text.split(",")]
-    for part in parts:
-        match = re.search(r"\s+(\d+)$", part)
-        if match:
-            cost = int(match.group(1))
-            breakdowns_list.append(part)
-            total_cost += cost
-        else:
-            breakdowns_list.append(part)
-    return breakdowns_list, total_cost
+    if raw is None:
+        return None
+    raw = raw.strip().replace(" ", "")
+    if not raw.lstrip("-").isdigit():
+        return None
+    value = int(raw)
+    if value <= 0:
+        return None
+    return value
 
 
+async def _create_fake_repair(message: Message, amount: int, user_id: int) -> None:
+    """Создаёт фиктивный ремонт на заданную сумму и отвечает пользователю."""
+    repair_data = dict(FAKE_REPAIR_DEFAULTS)
+    repair_data["cost"] = amount
+    repair_data["date"] = datetime.now().strftime("%d.%m.%Y")
 
+    new_id = storage.create_repair(repair_data)
+
+    logger.info(
+        "Создан быстрый (фиктивный) ремонт ID:%s на сумму %s руб. Инициатор user_id=%s.",
+        new_id,
+        amount,
+        user_id,
+    )
+
+    await message.answer(
+        f"✅ Быстрый ремонт добавлен!\n\n" + format_repair_details(repair_data),
+        reply_markup=detail_repair_inline(new_id),
+    )
+
+
+@router.message(Command("fake_repair"))
+async def cmd_fake_repair(message: Message, command: CommandObject, state: FSMContext):
+    """Быстрое создание фиктивного ремонта: /fake_repair [сумма]."""
+    user_id = message.from_user.id
+
+    if command.args:
+        amount = _parse_amount(command.args)
+        if amount is None:
+            logger.warning(
+                "Некорректная сумма в /fake_repair от user_id=%s: %r",
+                user_id,
+                command.args,
+            )
+            await message.answer(
+                "❌ Некорректная сумма. Введите положительное целое число, например:\n"
+                "<code>/fake_repair 1500</code>"
+            )
+            return
+        await _create_fake_repair(message, amount, user_id)
+        return
+
+    # Аргумент не передан — запрашиваем сумму отдельным шагом.
+    await state.set_state(FakeRepairForm.waiting_for_amount)
+    await message.answer(
+        "Введите сумму быстрого ремонта (только положительное число, например: 1500):"
+    )
+
+
+@router.message(FakeRepairForm.waiting_for_amount)
+async def process_fake_repair_amount(message: Message, state: FSMContext):
+    """Обрабатывает сумму, введённую после команды /fake_repair без аргумента."""
+    user_id = message.from_user.id
+    amount = _parse_amount(message.text)
+    if amount is None:
+        logger.warning(
+            "Некорректная сумма при диалоговом вводе /fake_repair от user_id=%s: %r",
+            user_id,
+            message.text,
+        )
+        await message.answer(
+            "❌ Некорректная сумма. Введите положительное целое число (например: 1500):"
+        )
+        return
+
+    await state.clear()
+    await _create_fake_repair(message, amount, user_id)
 
 
 @router.message(RepairForm.fio)
@@ -199,16 +291,24 @@ async def finish_e_bike_selection(callback: CallbackQuery, state: FSMContext):
 @router.message(RepairForm.cost)
 async def process_cost_input(message: Message, state: FSMContext):
     """Обрабатывает ручной ввод стоимости."""
-    try:
-        cost = int(message.text)
-        await state.update_data(cost=cost)
-        await state.set_state(RepairForm.notes)
-        await message.answer(
-            "Введите примечания к ремонту или пропустите:",
-            reply_markup=skip_notes_inline_kb(),
+    amount = _parse_amount(message.text)
+    if amount is None:
+        logger.warning(
+            "Некорректная стоимость при создании ремонта от user_id=%s: %r",
+            message.from_user.id,
+            message.text,
         )
-    except ValueError:
-        await message.answer("Пожалуйста, введите числовое значение стоимости.")
+        await message.answer(
+            "Пожалуйста, введите положительное числовое значение стоимости."
+        )
+        return
+
+    await state.update_data(cost=amount)
+    await state.set_state(RepairForm.notes)
+    await message.answer(
+        "Введите примечания к ремонту или пропустите:",
+        reply_markup=skip_notes_inline_kb(),
+    )
 
 
 @router.callback_query(F.data.startswith("confirm_cost:"), RepairForm.cost)
@@ -251,9 +351,7 @@ async def finalize_repair_creation(message: Message, state: FSMContext):
     Собирает все данные, сохраняет ремонт и отправляет итоговую карточку.
     """
     user_data = await state.get_data()
-    new_repair_id = storage.get_next_repair_id()
 
-    user_data["id"] = new_repair_id
     user_data["date"] = datetime.now().strftime("%d.%m.%Y")
 
     # Установка значений по-умолчанию для необязательных полей
@@ -263,7 +361,18 @@ async def finalize_repair_creation(message: Message, state: FSMContext):
     user_data.setdefault("namebike", "-")
     user_data.setdefault("repair_type", "unknown")  # Добавлено поле типа ремонта
 
-    storage.add_repair(user_data)
+    # Атомарно присваиваем ID и сохраняем — устраняет гонку между
+    # получением следующего ID и записью ремонта.
+    new_repair_id = storage.create_repair(user_data)
+
+    logger.info(
+        "Создан новый ремонт ID:%s. Клиент=%s, контакт=%s, стоимость=%s руб. user_id=%s.",
+        new_repair_id,
+        user_data.get("FIO", "-"),
+        mask_contact(user_data.get("contact", "-")),
+        user_data.get("cost", 0),
+        message.from_user.id if message.from_user else "unknown",
+    )
 
     await message.answer(
         f"✅ Ремонт успешно добавлен!\n\n" + format_repair_details(user_data),

@@ -13,8 +13,15 @@ from utils.keyboard import (
     skip_notes_inline_kb,
     confirm_total_cost_kb,
     select_repair_source_inline,
+    select_fake_source_inline,
+    main_reply_kb,
 )
-from utils.formatter import format_repair_details, parse_breakdowns_with_cost, mask_contact
+from utils.formatter import (
+    format_repair_details,
+    format_archived_repair_details,
+    parse_breakdowns_with_cost,
+    mask_contact,
+)
 from fsm_states import RepairForm, EditRepairForm, FakeRepairForm
 
 from datetime import datetime
@@ -28,28 +35,27 @@ def register_handlers(dp):
     dp.include_router(router)
 
 
-# --- ПУНКТ 1: Быстрое добавление фиктивного ремонта на произвольную сумму ---
+# --- ПУНКТ 1: Быстрое добавление суммы (быстрый ремонт) ---
 #
-# Реализовано как команда /fake_repair с необязательным аргументом-суммой:
-#   - "/fake_repair 1500"  -> ремонт создаётся сразу, без лишних вопросов.
-#   - "/fake_repair"       -> бот переходит в отдельное FSM-состояние
-#     FakeRepairForm.waiting_for_amount и просит ввести сумму следующим сообщением.
+# Сценарий "Кнопка → сумма → источник": пользователь жмёт кнопку
+# «💵 Быстрая сумма» (или вызывает команду /fake_repair), вводит сумму,
+# затем выбирает источник — и запись СРАЗУ сохраняется в архив (минуя
+# список активных ремонтов), так как это уже завершённая, оплаченная работа.
 #
-# Такой гибридный подход выбран, чтобы:
-#   1) не создавать отдельную полноценную FSM-форму там, где нужен один шаг;
-#   2) при этом поддержать удобный сценарий "написал команду без аргумента —
-#      бот сам спросит сумму", а не просто ругаться на отсутствие аргумента.
+# Команда /fake_repair оставлена как быстрый ввод:
+#   - "/fake_repair 1500" -> сразу спросит источник;
+#   - "/fake_repair"      -> спросит сумму, затем источник.
+#
 # Остальные поля (FIO, contact, namebike, breakdowns, notes) заполняются
-# заглушками, а repair_type жёстко выставляется в "quick", чтобы такие
-# ремонты было легко отличить в отчётах/архиве.
+# заглушками; repair_type берётся из выбранного источника. Структура записи
+# полностью совпадает с обычной архивной записью.
 
 FAKE_REPAIR_DEFAULTS = {
-    "FIO": "Без имени",
+    "FIO": "Быстрый ремонт",
     "contact": "-",
     "namebike": "-",
     "breakdowns": [],
-    "notes": "Быстрый ремонт",
-    "repair_type": "quick",
+    "notes": "Быстрое добавление суммы",
     "isMechanics": True,
 }
 
@@ -70,30 +76,63 @@ def _parse_amount(raw: str) -> int | None:
     return value
 
 
-async def _create_fake_repair(message: Message, amount: int, user_id: int) -> None:
-    """Создаёт фиктивный ремонт на заданную сумму и отвечает пользователю."""
+async def _create_fake_archived_repair(
+    message: Message, amount: int, source: str, user_id: int
+) -> None:
+    """
+    Создаёт быстрый ремонт на заданную сумму с выбранным источником и
+    сохраняет его СРАЗУ в архив. Отвечает пользователю карточкой ремонта.
+    """
+    today = datetime.now().strftime("%d.%m.%Y")
     repair_data = dict(FAKE_REPAIR_DEFAULTS)
+    repair_data["repair_type"] = source
     repair_data["cost"] = amount
-    repair_data["date"] = datetime.now().strftime("%d.%m.%Y")
+    repair_data["calculated_cost"] = amount
+    repair_data["date"] = today
+    repair_data["archive_date"] = today
 
-    new_id = storage.create_repair(repair_data)
+    new_id = storage.create_archived_repair(repair_data)
 
     logger.info(
-        "Создан быстрый (фиктивный) ремонт ID:%s на сумму %s руб. Инициатор user_id=%s.",
+        "Создан быстрый ремонт ID:%s на сумму %s руб. (источник=%s, сразу в архив). "
+        "Инициатор user_id=%s.",
         new_id,
         amount,
+        source,
         user_id,
     )
 
     await message.answer(
-        f"✅ Быстрый ремонт добавлен!\n\n" + format_repair_details(repair_data),
-        reply_markup=detail_repair_inline(new_id),
+        "✅ Быстрый ремонт добавлен в архив!\n\n"
+        + format_archived_repair_details(repair_data),
+        reply_markup=main_reply_kb(),
+    )
+
+
+async def _ask_fake_repair_source(
+    message: Message, amount: int, state: FSMContext
+) -> None:
+    """Сохраняет сумму в состоянии и просит выбрать источник."""
+    await state.update_data(fake_amount=amount)
+    await state.set_state(FakeRepairForm.waiting_for_source)
+    await message.answer(
+        f"Сумма: <b>{amount} руб.</b>\nВыберите источник:",
+        reply_markup=select_fake_source_inline(),
+    )
+
+
+@router.message(F.text == "💵 Быстрая сумма")
+async def start_fake_repair(message: Message, state: FSMContext):
+    """Старт быстрого добавления суммы по кнопке из меню."""
+    await state.set_state(FakeRepairForm.waiting_for_amount)
+    await message.answer(
+        "Введите сумму быстрого ремонта (только положительное число, например: 1500):"
     )
 
 
 @router.message(Command("fake_repair"))
 async def cmd_fake_repair(message: Message, command: CommandObject, state: FSMContext):
-    """Быстрое создание фиктивного ремонта: /fake_repair [сумма]."""
+    """Быстрое добавление суммы: /fake_repair [сумма]."""
     user_id = message.from_user.id
 
     if command.args:
@@ -109,7 +148,7 @@ async def cmd_fake_repair(message: Message, command: CommandObject, state: FSMCo
                 "<code>/fake_repair 1500</code>"
             )
             return
-        await _create_fake_repair(message, amount, user_id)
+        await _ask_fake_repair_source(message, amount, state)
         return
 
     # Аргумент не передан — запрашиваем сумму отдельным шагом.
@@ -121,12 +160,12 @@ async def cmd_fake_repair(message: Message, command: CommandObject, state: FSMCo
 
 @router.message(FakeRepairForm.waiting_for_amount)
 async def process_fake_repair_amount(message: Message, state: FSMContext):
-    """Обрабатывает сумму, введённую после команды /fake_repair без аргумента."""
+    """Обрабатывает введённую сумму и переходит к выбору источника."""
     user_id = message.from_user.id
     amount = _parse_amount(message.text)
     if amount is None:
         logger.warning(
-            "Некорректная сумма при диалоговом вводе /fake_repair от user_id=%s: %r",
+            "Некорректная сумма при вводе быстрой суммы от user_id=%s: %r",
             user_id,
             message.text,
         )
@@ -135,8 +174,45 @@ async def process_fake_repair_amount(message: Message, state: FSMContext):
         )
         return
 
+    await _ask_fake_repair_source(message, amount, state)
+
+
+@router.callback_query(F.data == "fake_cancel", FakeRepairForm.waiting_for_source)
+async def cancel_fake_repair(callback: CallbackQuery, state: FSMContext):
+    """Отмена быстрого добавления суммы на шаге выбора источника."""
     await state.clear()
-    await _create_fake_repair(message, amount, user_id)
+    await callback.message.edit_text("❌ Быстрое добавление отменено.")
+    await callback.message.answer("Выберите раздел:", reply_markup=main_reply_kb())
+    await callback.answer()
+
+
+@router.callback_query(
+    F.data.startswith("fake_source:"), FakeRepairForm.waiting_for_source
+)
+async def process_fake_repair_source(callback: CallbackQuery, state: FSMContext):
+    """Обрабатывает выбор источника и сохраняет быстрый ремонт сразу в архив."""
+    source = callback.data.split(":")[1]
+    user_data = await state.get_data()
+    amount = user_data.get("fake_amount")
+
+    if amount is None:
+        await state.clear()
+        await callback.message.edit_text(
+            "Произошла ошибка: сумма не найдена. Попробуйте снова."
+        )
+        await callback.message.answer(
+            "Выберите раздел:", reply_markup=main_reply_kb()
+        )
+        await callback.answer()
+        return
+
+    await state.clear()
+    # Убираем клавиатуру выбора источника, чтобы нельзя было нажать повторно.
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await _create_fake_archived_repair(
+        callback.message, amount, source, callback.from_user.id
+    )
+    await callback.answer()
 
 
 @router.message(RepairForm.fio)
@@ -177,11 +253,14 @@ async def process_bike_type(callback: CallbackQuery, state: FSMContext):
     await state.update_data(isMechanics=is_mechanics)
 
     if not is_mechanics:  # Электровелосипед
-        await state.update_data(namebike="Электровелосипед", breakdowns=[])
-        await state.set_state(RepairForm.e_bike_breakdowns_select)
+        # Раньше имя жёстко ставилось в "Электровелосипед". Теперь спрашиваем
+        # название так же, как у механических, чтобы электровелосипеды могли
+        # иметь собственные имена (и различаться в списке ремонтов).
+        await state.update_data(breakdowns=[])
+        await state.set_state(RepairForm.namebike)
         await callback.message.edit_text(
-            "Тип: Электровелосипед.\nВыберите стандартные поломки или введите свои:",
-            reply_markup=e_bike_problems_inline([]),
+            "Тип: Электровелосипед.\n"
+            "Введите название велосипеда (или отправьте «-», чтобы оставить «Электровелосипед»):"
         )
     else:  # Механический велосипед
         await state.set_state(RepairForm.namebike)
@@ -192,12 +271,30 @@ async def process_bike_type(callback: CallbackQuery, state: FSMContext):
 
 @router.message(RepairForm.namebike)
 async def process_namebike(message: Message, state: FSMContext):
-    """Сохраняет название механического велосипеда и запрашивает поломки."""
-    await state.update_data(namebike=message.text)
-    await state.set_state(RepairForm.breakdowns)
-    await message.answer(
-        "Введите поломки (можно несколько через запятую) и их стоимость через пробел (например: 'Порвана цепь 500, Прокол колеса 200'):"
-    )
+    """
+    Сохраняет название велосипеда и запрашивает поломки.
+    Для механического — ввод поломок текстом; для электровелосипеда —
+    выбор стандартных поломок кнопками (как и было).
+    """
+    user_data = await state.get_data()
+    is_mechanics = user_data.get("isMechanics", True)
+
+    name = (message.text or "").strip()
+    if not is_mechanics and (name == "-" or not name):
+        name = "Электровелосипед"
+    await state.update_data(namebike=name)
+
+    if is_mechanics:
+        await state.set_state(RepairForm.breakdowns)
+        await message.answer(
+            "Введите поломки (можно несколько через запятую) и их стоимость через пробел (например: 'Порвана цепь 500, Прокол колеса 200'):"
+        )
+    else:  # Электровелосипед — переходим к выбору стандартных поломок
+        await state.set_state(RepairForm.e_bike_breakdowns_select)
+        await message.answer(
+            "Выберите стандартные поломки или введите свои:",
+            reply_markup=e_bike_problems_inline([]),
+        )
 
 
 @router.message(RepairForm.breakdowns)

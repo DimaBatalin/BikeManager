@@ -1,3 +1,13 @@
 config.py
 __pycache__
 logs
+*.log
+
+# Данные бота (записи о ремонтах) храним ТОЛЬКО на рабочей машине/сервере,
+# в git их не кладём. Скрипт-генератор data/generatetestdata.py остаётся в git.
+data/*.json
+data/*.tmp
+data.zip
+
+# IDE
+.idea/

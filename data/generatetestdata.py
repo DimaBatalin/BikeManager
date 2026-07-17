@@ -1,6 +1,7 @@
 import random
 from datetime import datetime, timedelta
 import json
+from pathlib import Path
 import faker
 
 # Настройки генерации
@@ -9,12 +10,17 @@ START_DATE = datetime(2023, 7, 12)
 END_DATE = datetime(2025, 7, 12)
 TOTAL_DAYS = (END_DATE - START_DATE).days
 
+# Каталог с данными — рядом со скриптом (data/), чтобы генератор можно было
+# запускать из любого рабочего каталога.
+DATA_DIR = Path(__file__).resolve().parent
 
+# Ключи источников должны совпадать с config.REPAIR_SOURCES
+# (familiar/avito/scooter/outsourcing). Значения — веса вероятности.
 REPAIR_SOURCES = {
-    "friends": 0.1,
+    "familiar": 0.1,
     "avito": 0.4,
     "outsourcing": 0.4,
-    "scooter": 0.1
+    "scooter": 0.1,
 }
 
 
@@ -29,6 +35,17 @@ electro_breakdowns = [
     "Правка шатунов",
     "Прокачка тормоза",
     "Установка цепи",
+]
+
+# Модели электровелосипедов (теперь у электровелосипедов тоже могут быть имена)
+electric_bikes = [
+    "Kugoo M4",
+    "Eltreco XT",
+    "Hoverbot CB",
+    "Minako F10",
+    "Xiaomi Himo",
+    "White Siberia",
+    "Электровелосипед",
 ]
 
 # Бренды и модели для механических велосипедов
@@ -162,7 +179,9 @@ def generate_repair_entry(repair_id, date):
         "contact": generate_contact(),
         "isMechanics": is_mechanics,
         "namebike": (
-            random.choice(mechanical_bikes) if is_mechanics else "Электровелосипед"
+            random.choice(mechanical_bikes)
+            if is_mechanics
+            else random.choice(electric_bikes)
         ),
         "date": date.strftime("%d.%m.%Y"),
         "breakdowns": generate_breakdowns(is_mechanics),
@@ -228,11 +247,11 @@ for day in range(TOTAL_DAYS + 1):
 
     current_date += timedelta(days=1)
 
-# Сохранение в файлы
-with open("data/archive_repairs.json", "w", encoding="utf-8") as f:
+# Сохранение в файлы (рядом со скриптом, в каталоге data/)
+with open(DATA_DIR / "archive_repairs.json", "w", encoding="utf-8") as f:
     json.dump(archive_repairs, f, ensure_ascii=False, indent=2)
 
-with open("data/active_repairs.json", "w", encoding="utf-8") as f:
+with open(DATA_DIR / "active_repairs.json", "w", encoding="utf-8") as f:
     json.dump(active_repairs, f, ensure_ascii=False, indent=2)
 
 

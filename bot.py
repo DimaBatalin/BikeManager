@@ -29,11 +29,28 @@ logging.basicConfig(level=logging.INFO, handlers=[handler, logging.StreamHandler
 
 logger = logging.getLogger(__name__)
 
-bot = Bot(
-    token=config.TG_TOKEN,
-    default=DefaultBotProperties(parse_mode="HTML"),
-    session=AiohttpSession(),
-)
+
+def _build_bot() -> Bot:
+    """
+    Создаёт объект Bot. Если в config задан PROXY_URL (например
+    'socks5://127.0.0.1:10808'), подключение к Telegram идёт через прокси —
+    это нужно на сервере, где прямой доступ к Telegram закрыт. Если PROXY_URL
+    не задан (None/пусто), бот подключается напрямую.
+    """
+    proxy_url = getattr(config, "PROXY_URL", None)
+    if proxy_url:
+        logger.info("Подключение к Telegram через прокси.")
+        session = AiohttpSession(proxy=proxy_url)
+    else:
+        session = AiohttpSession()
+    return Bot(
+        token=config.TG_TOKEN,
+        default=DefaultBotProperties(parse_mode="HTML"),
+        session=session,
+    )
+
+
+bot = _build_bot()
 
 # Указываем, что будем хранить состояние FSM в оперативной памяти
 # Это имя `storage` используется диспетчером aiogram

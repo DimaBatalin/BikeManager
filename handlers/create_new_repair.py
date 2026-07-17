@@ -106,7 +106,7 @@ async def _ask_fake_repair_source(
     )
 
 
-@router.message(F.text == "💵 Быстрая сумма")
+@router.message(F.text == "Быстрая сумма")
 async def start_fake_repair(message: Message, state: FSMContext):
     """Старт быстрого добавления суммы по кнопке из меню."""
     await state.set_state(FakeRepairForm.waiting_for_amount)

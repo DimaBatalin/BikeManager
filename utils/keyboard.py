@@ -25,7 +25,7 @@ def main_reply_kb() -> ReplyKeyboardMarkup:
             KeyboardButton(text="Отчёты"),
         ],
         [
-            KeyboardButton(text="💵 Быстрая сумма"),
+            KeyboardButton(text="Быстрая сумма"),
         ],
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)

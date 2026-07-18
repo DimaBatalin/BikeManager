@@ -24,6 +24,9 @@ def main_reply_kb() -> ReplyKeyboardMarkup:
             KeyboardButton(text="Архив"),
             KeyboardButton(text="Отчёты"),
         ],
+        [
+            KeyboardButton(text="Быстрая сумма"),
+        ],
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
@@ -37,6 +40,23 @@ def select_repair_source_inline() -> InlineKeyboardMarkup:
         buttons.append(
             [InlineKeyboardButton(text=value, callback_data=f"set_source:{key}")]
         )
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def select_fake_source_inline() -> InlineKeyboardMarkup:
+    """
+    Клавиатура выбора источника для быстрого добавления суммы.
+    Отдельный префикс callback ('fake_source:'), чтобы не пересекаться
+    с обычным созданием ремонта ('set_source:').
+    """
+    buttons = []
+    for key, value in REPAIR_SOURCES.items():
+        buttons.append(
+            [InlineKeyboardButton(text=value, callback_data=f"fake_source:{key}")]
+        )
+    buttons.append(
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="fake_cancel")]
+    )
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
@@ -60,12 +80,17 @@ def active_repairs_inline(active_list: list = []) -> InlineKeyboardMarkup:
     keyboard = []
     for r in active_list:
         fio = format_name(r.get("FIO", "Без имени"))
+        namebike = (r.get("namebike") or "").strip()
+        # К ФИО добавляем название велосипеда, чтобы ремонты было легче
+        # различать в списке (например: "Иванов — Trek Fuel EX").
+        button_text = f"{fio} — {namebike}" if namebike and namebike != "-" else fio
         rid = r.get("id")
         if rid is not None:
             keyboard.append(
                 [
                     InlineKeyboardButton(
-                        text=fio, callback_data=f"show_active_repair_details:{rid}"
+                        text=button_text,
+                        callback_data=f"show_active_repair_details:{rid}",
                     )
                 ]
             )

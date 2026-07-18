@@ -504,8 +504,9 @@ async def update_bike_type(callback: CallbackQuery, state: FSMContext):
         return
 
     storage.update_repair_field(repair_id, "isMechanics", is_mechanics)
-    if not is_mechanics:
-        storage.update_repair_field(repair_id, "namebike", "Электровелосипед")
+    # Раньше при переключении на электровелосипед имя принудительно
+    # затиралось на "Электровелосипед". Больше так не делаем: имя не зависит
+    # от типа, его можно задать/поменять через кнопку «Название велосипеда».
 
     logger.info(
         "Тип велосипеда обновлён для ремонта ID:%s -> isMechanics=%s. user_id=%s.",

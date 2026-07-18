@@ -166,6 +166,24 @@ def create_repair(repair_dict: dict) -> int:
         return new_id
 
 
+def create_archived_repair(repair_dict: dict) -> int:
+    """
+    Атомарно генерирует новый ID и добавляет ремонт СРАЗУ в архив
+    (минуя список активных). Используется для быстрого добавления суммы —
+    это уже завершённая работа, которой сразу место в архиве.
+    Если дата архивации не задана, проставляет сегодняшнюю.
+    Возвращает присвоенный ID.
+    """
+    with lock:
+        new_id = _get_next_repair_id_unlocked()
+        repair_dict["id"] = new_id
+        repair_dict.setdefault("archive_date", datetime.now().strftime("%d.%m.%Y"))
+        data = _load(config.ARCHIVE_PATH)
+        data.append(repair_dict)
+        _save(config.ARCHIVE_PATH, data)
+        return new_id
+
+
 def archive_repair_by_id(rid: int) -> bool:
     """
     Перемещает ремонт из активных в архив по ID.

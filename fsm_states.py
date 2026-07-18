@@ -39,6 +39,7 @@ class EditArchiveForm(StatesGroup):
 
 
 class FakeRepairForm(StatesGroup):
-    """Состояние для быстрого добавления фиктивного ремонта на произвольную сумму."""
+    """Состояния для быстрого добавления суммы: ввод суммы -> выбор источника."""
 
     waiting_for_amount = State()
+    waiting_for_source = State()
